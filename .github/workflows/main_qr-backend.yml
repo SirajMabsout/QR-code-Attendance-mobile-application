@@ -68,5 +68,6 @@ jobs:
         with:
           app-name: 'qr-backend'
           slot-name: 'Production'
-          package: '*.jar'
+          package:  'QR/build/libs/*.jar'
+
           
