@@ -88,3 +88,8 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+tasks.withType(Jar).configureEach {
+	if (archiveClassifier.get() == 'plain') {
+		enabled = false
+	}
+}
