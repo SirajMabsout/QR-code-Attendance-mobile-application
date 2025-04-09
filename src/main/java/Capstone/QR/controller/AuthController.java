@@ -48,13 +48,15 @@ public class AuthController {
         }
 
         Role role = request.getRole();
+
+        // ❌ Disallow admin registrations through this endpoint
+        if (role == Role.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Admin registration is not allowed.");
+        }
+
         User user;
 
         switch (role) {
-            case ADMIN:
-                user = new Admin();
-                break;
-
             case TEACHER:
                 user = new Teacher();
                 break;
@@ -73,10 +75,11 @@ public class AuthController {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(role);
 
-        userRepository.save(user);  // will insert into correct subclass table
+        userRepository.save(user);
 
         return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully.");
     }
+
 
 
     // === Login (set HttpOnly cookies) ===
