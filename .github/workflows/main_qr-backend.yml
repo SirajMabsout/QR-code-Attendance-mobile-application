@@ -28,6 +28,9 @@ jobs:
         working-directory: ./QR
         run: ./gradlew build -x test
 
+      - name: List JARs after build (debug)
+        run: ls -l QR/build/libs/
+
       - name: Rename built JAR to app.jar
         run: mv QR/build/libs/*.jar QR/build/libs/app.jar
 
