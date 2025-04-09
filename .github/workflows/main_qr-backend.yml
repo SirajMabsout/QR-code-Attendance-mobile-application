@@ -53,6 +53,9 @@ jobs:
         with:
           name: java-app
 
+      - name: Confirm JAR is here
+        run: ls -l
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -66,4 +69,4 @@ jobs:
         with:
           app-name: 'qr-backend'
           slot-name: 'Production'
-          package: app.jar
+          package: ./app.jar
