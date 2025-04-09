@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read # Required for actions/checkout
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -28,11 +28,15 @@ jobs:
         working-directory: ./QR
         run: ./gradlew build -x test
 
+      - name: Rename built JAR to app.jar
+        working-directory: ./QR
+        run: mv build/libs/*.jar build/libs/app.jar
+
       - name: Upload JAR for deployment
         uses: actions/upload-artifact@v4
         with:
           name: java-app
-          path: ./QR/build/libs/QR-0.0.1-SNAPSHOT.jar  # 🟢 Use your actual JAR filename here
+          path: ./QR/build/libs/app.jar
 
   deploy:
     runs-on: ubuntu-latest
@@ -63,4 +67,4 @@ jobs:
         with:
           app-name: 'qr-backend'
           slot-name: 'Production'
-          package: QR-0.0.1-SNAPSHOT.jar  # 🟢 Must match exactly what you uploaded above
+          package: app.jar
