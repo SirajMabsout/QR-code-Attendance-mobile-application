@@ -1,3 +1,6 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
 name: Build and deploy JAR app to Azure Web App - qr-backend
 
 on:
@@ -24,15 +27,17 @@ jobs:
       - name: Set up Gradle
         uses: gradle/gradle-build-action@v2
 
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
       - name: Build with Gradle
-        working-directory: ./QR
         run: ./gradlew build -x test
 
-      - name: Upload any JAR for deployment
+      - name: Upload JAR for deployment
         uses: actions/upload-artifact@v4
         with:
           name: java-app
-          path: QR/build/libs/*.jar
+          path: build/libs/*.jar
 
   deploy:
     runs-on: ubuntu-latest
@@ -50,21 +55,12 @@ jobs:
         with:
           name: java-app
 
-      - name: List contents to debug
-        run: ls -l
-
-      - name: Rename the real JAR to app.jar
-        run: |
-          JAR=$(find . -name "*.jar" | head -n 1)
-          echo "Found: $JAR"
-          cp "$JAR" app.jar
-
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_DF911CD91939481288463633AC3D7939 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_73CE7A9D7B4942AAB473345849624E93 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_0126FFB4D32C4CD1914C7EEF5FB4AAEA }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_41280E08E53B48A6ACEE288D1D03E9A0 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_BE12DCFB71174F84A27885A47DAF517B }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_2935A600DECE4BC6B051B1E0948C3C8A }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
@@ -72,4 +68,4 @@ jobs:
         with:
           app-name: 'qr-backend'
           slot-name: 'Production'
-          package: ./app.jar
+          package: '*.jar'
