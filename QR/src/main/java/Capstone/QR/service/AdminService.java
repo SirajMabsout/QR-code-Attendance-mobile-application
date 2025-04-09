@@ -2,9 +2,11 @@ package Capstone.QR.service;
 
 
 import Capstone.QR.model.Klass;
+import Capstone.QR.model.KlassStudent;
 import Capstone.QR.model.Teacher;
 import Capstone.QR.model.Student;
 import Capstone.QR.repository.KlassRepository;
+import Capstone.QR.repository.KlassStudentRepository;
 import Capstone.QR.repository.StudentRepository;
 import Capstone.QR.repository.TeacherRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +21,7 @@ public class AdminService {
 
     private final TeacherRepository teacherRepository;
     private final KlassRepository klassRepository;
-    private final StudentRepository studentRepository;
+    private final KlassStudentRepository klassStudentRepository;
 
     public void approveTeacher(Long teacherId) {
         Teacher teacher = teacherRepository.findById(teacherId)
@@ -48,11 +50,10 @@ public class AdminService {
 
     // === Unregister student from class ===
     public void removeStudentFromClass(Long classId, Long studentId) {
-        Klass klass = klassRepository.findById(classId)
-                .orElseThrow(() -> new RuntimeException("Class not found"));
-        Student student = studentRepository.findById(studentId)
-                .orElseThrow(() -> new RuntimeException("Student not found"));
-        klass.getStudents().remove(student);
-        klassRepository.save(klass);
+        KlassStudent join = klassStudentRepository.findByKlassIdAndStudentId(classId, studentId)
+                .orElseThrow(() -> new RuntimeException("Student is not enrolled in this class"));
+
+        klassStudentRepository.delete(join);
     }
+
 }

@@ -13,12 +13,14 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class QRCode {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
-    private Klass Klass;
+    @OneToOne(optional = false)
+    @JoinColumn(name = "session_id")
+    private ClassSession session; // ✅ Link directly to session instead of Klass
 
     private LocalDateTime sessionDate;
 
@@ -29,5 +31,4 @@ public class QRCode {
 
     private double latitude;
     private double longitude;
-
 }

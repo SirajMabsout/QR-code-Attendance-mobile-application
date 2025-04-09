@@ -20,8 +20,8 @@ public class AttendanceRequest {
     @ManyToOne
     private Student student;
 
-    @ManyToOne
-    private Klass klass;
+    @ManyToOne(optional = false)
+    private ClassSession session;
 
     private LocalDateTime requestedAt;
 

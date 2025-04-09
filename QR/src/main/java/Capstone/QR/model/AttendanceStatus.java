@@ -1,5 +1,5 @@
 package Capstone.QR.model;
 
 public enum AttendanceStatus {
-    PRESENT, ABSENT
+    PRESENT, ABSENT, EXCUSED,PENDING
 }

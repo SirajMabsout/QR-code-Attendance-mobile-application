@@ -1,12 +1,19 @@
 package Capstone.QR.service;
 
+import Capstone.QR.dto.Response.ImageUploadResponse;
+import Capstone.QR.dto.Response.UserResponse;
 import Capstone.QR.model.User;
 import Capstone.QR.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.NoSuchElementException;
 
 
 @Service
@@ -15,27 +22,34 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ImgurImageService imgurImageService;
 
-    // View current user profile
-    public User getProfile(UserDetails userDetails) {
-        return userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-    }
+        public ImageUploadResponse uploadProfileIcon(Long userId, MultipartFile image) throws IOException, InterruptedException {
+            String imageUrl = imgurImageService.uploadImage(image);
 
-    // Update profile details (name, image)
-    public User updateProfile(UserDetails userDetails, String name, String profileImage) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new NoSuchElementException("User not found"));
 
-        if (name != null && !name.isBlank()) {
-            user.setName(name);
-        }
-        if (profileImage != null && !profileImage.isBlank()) {
-            user.setProfileImage(profileImage);
+            user.setProfileImageUrl(imageUrl);
+            userRepository.save(user);
+
+            return new ImageUploadResponse("success", imageUrl);
         }
 
-        return userRepository.save(user);
-    }
+        public UserResponse getUserProfile(String email) {
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new NoSuchElementException("User not found"));
+
+            return new UserResponse(
+                    user.getId(),
+                    user.getName(),
+                    user.getEmail(),
+                    user.getProfileImageUrl(),
+                    user.getRole().name() // Assuming enum or Role object with .name()
+            );
+        }
+
+
 
     // Change password
     public void changePassword(UserDetails userDetails, String oldPassword, String newPassword) {
@@ -49,6 +63,8 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
     }
+
+
 }
 
 

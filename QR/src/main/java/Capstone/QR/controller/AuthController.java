@@ -1,15 +1,11 @@
 package Capstone.QR.controller;
 
-import Capstone.QR.dto.Request.ForgotPasswordRequest;
-import Capstone.QR.dto.Request.LoginRequest;
-import Capstone.QR.dto.Request.RegisterRequest;
-import Capstone.QR.dto.Request.ResetPasswordRequest;
+import Capstone.QR.dto.Request.*;
 import Capstone.QR.model.*;
-import Capstone.QR.repository.PasswordResetTokenRepository;
-import Capstone.QR.repository.TeacherRepository;
-import Capstone.QR.repository.UserRepository;
+import Capstone.QR.repository.*;
 import Capstone.QR.security.jwt.JwtUtil;
 import Capstone.QR.service.EmailService;
+import Capstone.QR.service.PasswordResetService;
 import Capstone.QR.service.RefreshTokenService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,11 +35,10 @@ public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final JwtUtil jwtUtil;
-    private final EmailService emailService;
     private final RefreshTokenService refreshTokenService;
     private final TeacherRepository teacherRepository;
+    private final PasswordResetService resetService;
 
     // === Register ===
     @PostMapping("/register")
@@ -52,15 +47,37 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already registered.");
         }
 
-        User user = new User();
+        Role role = request.getRole();
+        User user;
+
+        switch (role) {
+            case ADMIN:
+                user = new Admin();
+                break;
+
+            case TEACHER:
+                user = new Teacher();
+                break;
+
+            case STUDENT:
+                user = new Student();
+                break;
+
+            default:
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid role specified.");
+        }
+
+        // Common fields for all users
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(request.getRole());
-        userRepository.save(user);
+        user.setRole(role);
+
+        userRepository.save(user);  // will insert into correct subclass table
 
         return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully.");
     }
+
 
     // === Login (set HttpOnly cookies) ===
     @PostMapping("/login")
@@ -93,7 +110,7 @@ public class AuthController {
                     .httpOnly(true)
                     .secure(false) // Set to true in production
                     .path("/")
-                    .maxAge(60 * 60)
+                    .maxAge(60*60 )
                     .sameSite("Strict")
                     .build();
 
@@ -178,53 +195,36 @@ public class AuthController {
         return ResponseEntity.ok("Logged out successfully");
     }
 
-    // === Forgot Password ===
+
+
+
     @PostMapping("/forgot-password")
-    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
-        String email = request.getEmail();
-
-        Optional<User> userOptional = userRepository.findByEmail(email);
-        if (userOptional.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
-        }
-
-        User user = userOptional.get();
-        String token = UUID.randomUUID().toString();
-
-        PasswordResetToken resetToken = new PasswordResetToken();
-        resetToken.setToken(token);
-        resetToken.setUser(user);
-        resetToken.setExpiry(LocalDateTime.now().plusMinutes(30));
-        passwordResetTokenRepository.save(resetToken);
-
-        String link = "http://yourfrontend.com/reset-password?token=" + token;
-        emailService.send(email, "Reset your password", "Click to reset: " + link);
-
-        return ResponseEntity.ok("Reset link sent to email.");
+    public ResponseEntity<?> forgotPassword(@RequestBody @Valid ForgotPasswordRequest request) {
+        resetService.sendResetCode(request.getEmail());
+        return ResponseEntity.ok("Reset code sent");
     }
 
+    @PostMapping("/verify-reset-code")
+    public ResponseEntity<?> verifyResetCode(@RequestBody @Valid VerifyCodeRequest request) {
+        resetService.verifyResetCode(request.getEmail(), request.getCode());
+        return ResponseEntity.ok("Code verified");
+    }
 
-    // === Reset Password ===
     @PostMapping("/reset-password")
-    public ResponseEntity<?> resetPassword(
-            @RequestParam String token,
-            @Valid @RequestBody ResetPasswordRequest request
-    ) {
-        String newPassword = request.getPassword();
+    public ResponseEntity<?> resetPassword(@RequestBody @Valid ResetPasswordRequest request) {
+        resetService.resetPassword(
+                request.getEmail(),
+                request.getCode(),
+                request.getNewPassword()
 
-        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
-                .orElseThrow(() -> new RuntimeException("Invalid token"));
-
-        if (resetToken.getExpiry().isBefore(LocalDateTime.now())) {
-            return ResponseEntity.status(HttpStatus.GONE).body("Token expired");
-        }
-
-        User user = resetToken.getUser();
-        user.setPassword(passwordEncoder.encode(newPassword));
-        userRepository.save(user);
-        passwordResetTokenRepository.delete(resetToken);
-
-        return ResponseEntity.ok("Password reset successful.");
+        );
+        return ResponseEntity.ok("Password reset successfully");
     }
 
-}
+    }
+
+
+
+
+
+

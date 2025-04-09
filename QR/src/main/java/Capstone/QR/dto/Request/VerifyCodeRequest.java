@@ -10,11 +10,14 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ForgotPasswordRequest {
+public class VerifyCodeRequest {
 
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
     private String email;
 
-    // Getters and Setters
+    @NotBlank(message = "Verification code is required")
+    private String code;
+
+
 }

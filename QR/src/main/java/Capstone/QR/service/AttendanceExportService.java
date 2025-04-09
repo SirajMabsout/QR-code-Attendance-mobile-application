@@ -14,7 +14,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +26,7 @@ public class AttendanceExportService {
         Klass klass = klassRepository.findById(classId)
                 .orElseThrow(() -> new RuntimeException("Class not found"));
 
-        List<Attendance> attendanceList = attendanceRepository.findByKlassId(klass.getId());
+        List<Attendance> attendanceList = attendanceRepository.findBySession_Klass_Id(klass.getId());
 
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("Attendance");
@@ -46,7 +45,7 @@ public class AttendanceExportService {
                 row.createCell(0).setCellValue(att.getStudent().getName());
                 row.createCell(1).setCellValue(att.getStudent().getEmail());
                 row.createCell(2).setCellValue(att.getStatus().name());
-                row.createCell(3).setCellValue(att.getDate().toString());
+                row.createCell(3).setCellValue(att.getRecordedAt().toString());
             }
 
             workbook.write(out);

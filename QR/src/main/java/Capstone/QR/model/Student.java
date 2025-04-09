@@ -1,5 +1,6 @@
 package Capstone.QR.model;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
@@ -16,9 +17,11 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Student extends User {
-    @ManyToMany(mappedBy = "students")
-    private List<Klass> registeredClasses;
+    @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<KlassStudent> klassStudents;
 
     @OneToMany(mappedBy = "student")
     private List<Attendance> attendanceRecords;
+
+
 }

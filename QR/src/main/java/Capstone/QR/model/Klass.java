@@ -28,15 +28,17 @@ public class Klass {
     @ManyToOne
     private Teacher teacher;
 
-    @ManyToMany
-    private List<Student> students;
+    @OneToMany(mappedBy = "klass", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<KlassStudent> klassStudents;
 
-    @OneToMany(mappedBy = "klass")
-    private List<Attendance> attendanceRecords;
 
     private String description;
 
     private int maxAbsencesAllowed;
+
+    @Column(nullable = false)
+    private int durationMinutes; // duration in minutes
+
 
     // ✅ New scheduling fields:
     private LocalDate startDate;           // e.g. 2025-04-01
@@ -47,5 +49,20 @@ public class Klass {
     @Column(name = "day_of_week")
     private List<DayOfWeek> scheduledDays; // e.g. MONDAY, WEDNESDAY
 
-    private LocalTime classTime;           // e.g. 10:00 AM
+    private LocalTime classTime;// e.g. 10:00 AM
+
+    @Column(unique = true, nullable = false)
+    private String joinCode;
+
+    @OneToMany(mappedBy = "klass", cascade = CascadeType.ALL)
+    private List<ClassSession> sessions;
+
+
+
+    @Column(nullable = false)
+    private double acceptanceRadiusMeters = 5.0;
+
+
+
+
 }

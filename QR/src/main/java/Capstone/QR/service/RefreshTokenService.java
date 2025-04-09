@@ -3,6 +3,7 @@ package Capstone.QR.service;
 import Capstone.QR.model.RefreshToken;
 import Capstone.QR.model.User;
 import Capstone.QR.repository.RefreshTokenRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -17,20 +18,26 @@ public class RefreshTokenService {
     private final RefreshTokenRepository refreshTokenRepository;
 
     // Create a refresh token for user
+    @Transactional
     public String createRefreshToken(User user) {
-        // Remove old one if it exists
-        refreshTokenRepository.deleteByUser(user);
+        try {
+            System.out.println("Removing old token...");
+            refreshTokenRepository.deleteByUser(user);
 
-        RefreshToken refreshToken = new RefreshToken();
-        refreshToken.setToken(UUID.randomUUID().toString());
-        refreshToken.setUser(user);
-        // Valid for 30 days
-        long refreshTokenDurationMs = 1000L * 60 * 60 * 24 * 30;
-        refreshToken.setExpiryDate(new Date(System.currentTimeMillis() + refreshTokenDurationMs));
+            RefreshToken refreshToken = new RefreshToken();
+            refreshToken.setToken(UUID.randomUUID().toString());
+            refreshToken.setUser(user);
+            refreshToken.setExpiryDate(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30));
 
-        refreshTokenRepository.save(refreshToken);
-        return refreshToken.getToken();
+            refreshTokenRepository.save(refreshToken);
+            System.out.println("Refresh token created successfully.");
+            return refreshToken.getToken();
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to create refresh token: " + e.getMessage());
+        }
     }
+
 
     // Validate refresh token: check expiration
     public RefreshToken validateRefreshToken(String token) {

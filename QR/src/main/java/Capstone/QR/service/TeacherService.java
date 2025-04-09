@@ -1,19 +1,26 @@
 package Capstone.QR.service;
 
-import Capstone.QR.dto.CreateClassRequest;
-import Capstone.QR.dto.Response.ClassResponse;
-import Capstone.QR.dto.Response.StudentResponse;
+import Capstone.QR.dto.Request.CreateClassRequest;
+import Capstone.QR.dto.Response.*;
 import Capstone.QR.model.*;
 import Capstone.QR.repository.*;
+import Capstone.QR.utils.CodeGeneratorUtil;
+import Capstone.QR.utils.GenerateSessions;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
-import java.nio.file.AccessDeniedException;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import static Capstone.QR.utils.generateQR.generateQrCodeImage;
+
+import static Capstone.QR.utils.GenerateQR.generateQrCodeImage;
 
 @Service
 @RequiredArgsConstructor
@@ -21,184 +28,414 @@ public class TeacherService {
 
     private final TeacherRepository teacherRepository;
     private final KlassRepository klassRepository;
-    private final StudentRepository studentRepository;
     private final AttendanceRepository attendanceRepository;
     private final QRCodeRepository qrCodeRepository;
     private final AttendanceRequestRepository attendanceRequestRepository;
     private final KlassStudentRepository klassStudentRepository;
+    private final ClassSessionRepository classSessionRepository;
+    private final StudentRepository studentRepository;
 
-    // 1. Create a class
-    public ClassResponse createClass(CreateClassRequest request, UserDetails teacherUser) {
-        Teacher teacher = teacherRepository.findByEmail(teacherUser.getUsername())
+    // ========== CLASS MANAGEMENT ==========
+
+    public ClassResponse createClass(CreateClassRequest request, UserDetails userDetails) {
+        Teacher teacher = teacherRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Teacher not found"));
 
+        // ❌ Check for duplicate class name
+        if (klassRepository.existsByTeacherAndName(teacher, request.getName())) {
+            throw new RuntimeException("You already have a class with this name.");
+        }
+
+        // ❌ Check for class schedule conflict using date + day + time + duration
+        List<Klass> existingClasses = klassRepository.findByTeacher(teacher);
+        for (Klass existing : existingClasses) {
+            boolean dateOverlap = !request.getEndDate().isBefore(existing.getStartDate()) &&
+                    !request.getStartDate().isAfter(existing.getEndDate());
+            if (!dateOverlap) continue;
+
+            boolean dayConflict = existing.getScheduledDays().stream()
+                    .anyMatch(request.getScheduledDays()::contains);
+
+            LocalTime newStart = request.getClassTime();
+            LocalTime newEnd = newStart.plusMinutes(request.getDurationMinutes());
+            LocalTime existingStart = existing.getClassTime();
+            LocalTime existingEnd = existingStart.plusMinutes(existing.getDurationMinutes());
+
+            // ✅ Correct conflict check: overlaps or touches
+            boolean timeConflict = newStart.isBefore(existingEnd) && newEnd.isAfter(existingStart);
+
+            if (dayConflict && timeConflict) {
+                throw new RuntimeException("Class schedule conflicts with an existing class: " + existing.getName());
+            }
+        }
+
+        // ✅ Proceed to create the class
         Klass klass = new Klass();
         klass.setName(request.getName());
         klass.setDescription(request.getDescription());
-        klass.setClassTime(request.getClassTime());
-        klass.setMaxAbsencesAllowed(request.getMaxAbsencesAllowed());
         klass.setTeacher(teacher);
+        klass.setMaxAbsencesAllowed(request.getMaxAbsencesAllowed());
+        klass.setStartDate(request.getStartDate());
+        klass.setEndDate(request.getEndDate());
+        klass.setScheduledDays(request.getScheduledDays());
+        klass.setClassTime(request.getClassTime());
+        klass.setJoinCode(CodeGeneratorUtil.generateJoinCode());
+        klass.setAcceptanceRadiusMeters(request.getAcceptanceRadiusMeters());
+        klass.setDurationMinutes(request.getDurationMinutes()); // ✅ Set class duration
 
-        klass = klassRepository.save(klass);
+        // ✅ Generate and set sessions
+        List<ClassSession> sessions = GenerateSessions.generateSessionsForClass(klass);
+        klass.setSessions(sessions);
 
-        return mapToResponse(klass);
+        klassRepository.save(klass);
+        classSessionRepository.saveAll(sessions);
+
+        return mapToClassResponse(klass);
     }
 
-    // 2. List all classes by teacher
-    public List<ClassResponse> getAllClasses(UserDetails teacherUser) {
-        Teacher teacher = teacherRepository.findByEmail(teacherUser.getUsername())
+    public List<ClassResponse> getAllClasses(UserDetails userDetails) {
+        Teacher teacher = teacherRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Teacher not found"));
 
         return klassRepository.findByTeacher(teacher)
                 .stream()
-                .map(this::mapToResponse)
+                .map(this::mapToClassResponse)
                 .collect(Collectors.toList());
     }
 
-    // 3. View class details
-    public ClassResponse getClassDetails(Long classId, UserDetails teacherUser) {
-        Klass klass = klassRepository.findById(classId)
-                .orElseThrow(() -> new RuntimeException("Class not found"));
+    public ClassDetailResponse getClassDetails(Long classId, UserDetails userDetails) {
+        Klass klass = validateTeacherOwnsClass(classId, userDetails);
 
-        if (!klass.getTeacher().getEmail().equals(teacherUser.getUsername())) {
-            throw new RuntimeException("Access denied");
-        }
+        List<StudentResponse> enrolledStudents = klassStudentRepository
+                .findAllByKlassIdAndApprovedTrue(classId)
+                .stream()
+                .map(ks -> new StudentResponse(
+                        ks.getStudent().getId(),
+                        ks.getStudent().getName(),
+                        ks.getStudent().getEmail()))
+                .toList();
 
-        return mapToResponse(klass);
+        LocalDate today = LocalDate.now();
+
+        List<SessionResponse> sessionResponses = klass.getSessions().stream()
+                .map(session -> {
+                    boolean isToday = session.getSessionDate().equals(today);
+                    boolean isUpcoming = session.getSessionDate().isAfter(today);
+                    boolean isPast = session.getSessionDate().isBefore(today);
+
+                    return new SessionResponse(
+                            session.getId(),
+                            session.getSessionDate(),
+                            session.getSessionTime(),
+                            session.getTopic(),
+                            session.isCanceled(),
+                            isToday,
+                            isUpcoming,
+                            isPast
+                    );
+                })
+                .toList();
+
+
+        return new ClassDetailResponse(
+                klass.getId(),
+                klass.getName(),
+                klass.getDescription(),
+                klass.getClassTime(),
+                klass.getMaxAbsencesAllowed(),
+                klass.getJoinCode(),
+                klass.getStartDate(),
+                klass.getEndDate(),
+                klass.getDurationMinutes(),
+                klass.getScheduledDays(),
+                sessionResponses,
+                enrolledStudents
+        );
     }
 
 
+    public StudentClassAttendanceStatsResponse getStudentClassStats(Long classId, Long studentId, UserDetails userDetails) {
+        Klass klass = validateTeacherOwnsClass(classId, userDetails);
 
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new RuntimeException("Student not found"));
 
+        // Total valid sessions (excluding canceled and future sessions)
+        List<ClassSession> sessions = classSessionRepository.findByKlass_Id(classId).stream()
+                .filter(s -> !s.isCanceled() && !s.getSessionDate().atTime(s.getSessionTime()).isAfter(LocalDateTime.now()))
+                .toList();
 
-    // 6. Generate QR code for session
-    public QRCode generateQrCode(Long classId, LocalDateTime sessionDateTime, double latitude, double longitude) {
-        Klass klass = klassRepository.findById(classId)
-                .orElseThrow(() -> new RuntimeException("Class not found"));
+        List<Attendance> attendances = attendanceRepository.findBySession_Klass_IdAndStudent_Id(classId, studentId);
 
-        String qrText = UUID.randomUUID().toString(); // or encode session info here
+        int total = sessions.size();
+        int present = (int) attendances.stream().filter(a -> a.getStatus() == AttendanceStatus.PRESENT).count();
+        int excused = (int) attendances.stream().filter(a -> a.getStatus() == AttendanceStatus.EXCUSED).count();
+
+        int attended = present + excused;
+        int absent = total - attended;
+
+        double percentage = total == 0 ? 0.0 : (present * 100.0) / total;
+
+        return new StudentClassAttendanceStatsResponse(
+                student.getId(),
+                student.getName(),
+                klass.getId(),
+                klass.getName(),
+                total,
+                present,
+                excused,
+                absent,
+                percentage,
+                klass.getMaxAbsencesAllowed(),
+                klass.getMaxAbsencesAllowed() - absent
+        );
+    }
+
+    // ========== QR CODE ==========
+
+    public QRCode generateQrCodeForSession(Long sessionId, double latitude, double longitude, UserDetails userDetails) {
+        ClassSession session = classSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+
+        validateTeacherOwnsClass(session.getKlass().getId(), userDetails);
+
+        String qrText = UUID.randomUUID().toString();
         String qrBase64 = generateQrCodeImage(qrText);
 
         QRCode qrCode = new QRCode();
-        qrCode.setKlass(klass);
-        qrCode.setSessionDate(sessionDateTime);
-        qrCode.setExpiresAt(sessionDateTime.plusMinutes(10));
-        qrCode.setQrCodeData(qrBase64); // 🔁 Now stores actual QR image
+        qrCode.setSession(session);
+        qrCode.setSessionDate(session.getSessionDate().atTime(session.getSessionTime()));
+        qrCode.setExpiresAt(session.getSessionDate().atTime(session.getSessionTime()).plusMinutes(10));
+        qrCode.setQrCodeData(qrBase64);
         qrCode.setLatitude(latitude);
         qrCode.setLongitude(longitude);
 
         return qrCodeRepository.save(qrCode);
     }
 
+    // ========== SESSION DETAILS ==========
 
-    // 7. View student attendance
-    public List<Attendance> getStudentAttendance(Long classId, Long studentId) {
-        return attendanceRepository.findByKlassIdAndStudentId(classId, studentId);
+    public SessionDetailResponse getSessionDetails(Long sessionId, UserDetails userDetails) {
+        ClassSession session = classSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+
+        validateTeacherOwnsClass(session.getKlass().getId(), userDetails);
+
+        // ✅ If session is canceled, return without attendance list
+        if (session.isCanceled()) {
+            return new SessionDetailResponse(
+                    session.getId(),
+                    session.getSessionDate(),
+                    session.getSessionTime(),
+                    true,
+                    session.getTopic(),
+                    List.of() // empty attendance list
+            );
+        }
+
+        // Get all approved students for this class
+        List<Student> enrolledStudents = klassStudentRepository.findAllByKlassIdAndApprovedTrue(session.getKlass().getId())
+                .stream()
+                .map(KlassStudent::getStudent)
+                .toList();
+
+        // Fetch existing attendance records
+        List<Attendance> recordedAttendances = attendanceRepository.findBySession_Id(sessionId);
+
+        // Map studentId -> attendance
+        Map<Long, Attendance> attendanceMap = recordedAttendances.stream()
+                .collect(Collectors.toMap(a -> a.getStudent().getId(), a -> a));
+
+        LocalDateTime sessionStart = session.getSessionDate().atTime(session.getSessionTime());
+        LocalDateTime sessionEnd = sessionStart.plusMinutes(session.getKlass().getDurationMinutes());
+        LocalDateTime now = LocalDateTime.now();
+
+        List<AttendanceResponse> attendanceResponses = enrolledStudents.stream()
+                .map(student -> {
+                    Attendance attendance = attendanceMap.get(student.getId());
+
+                    if (attendance != null) {
+                        return new AttendanceResponse(
+                                attendance.getId(),
+                                session.getKlass().getId(),
+                                student.getId(),
+                                sessionId,
+                                student.getName(),
+                                attendance.getRecordedAt(),
+                                attendance.getStatus()
+                        );
+                    } else if (now.isBefore(sessionEnd)) {
+                        return new AttendanceResponse(
+                                null,
+                                session.getKlass().getId(),
+                                student.getId(),
+                                sessionId,
+                                student.getName(),
+                                null,
+                                AttendanceStatus.PENDING
+                        );
+                    } else {
+                        return new AttendanceResponse(
+                                null,
+                                session.getKlass().getId(),
+                                student.getId(),
+                                sessionId,
+                                student.getName(),
+                                null,
+                                AttendanceStatus.ABSENT
+                        );
+                    }
+                }).toList();
+
+        return new SessionDetailResponse(
+                session.getId(),
+                session.getSessionDate(),
+                session.getSessionTime(),
+                false,
+                session.getTopic(),
+                attendanceResponses
+        );
     }
 
-    // 8. Edit student attendance
-    public void editAttendance(Long attendanceId, AttendanceStatus newStatus) {
+    // ========== ATTENDANCE ==========
+
+    public List<Attendance> getSessionAttendance(Long sessionId, Long studentId, UserDetails userDetails) {
+        ClassSession session = classSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+
+        validateTeacherOwnsClass(session.getKlass().getId(), userDetails);
+
+        return attendanceRepository.findBySession_IdAndStudent_Id(sessionId, studentId);
+    }
+
+    public void editAttendance(Long sessionId, Long attendanceId, AttendanceStatus newStatus, UserDetails userDetails) {
         Attendance attendance = attendanceRepository.findById(attendanceId)
-                .orElseThrow(() -> new RuntimeException("Attendance record not found"));
+                .orElseThrow(() -> new RuntimeException("Attendance not found"));
+
+        if (!attendance.getSession().getId().equals(sessionId)) {
+            throw new RuntimeException("Attendance does not belong to this session");
+        }
+
+        validateTeacherOwnsClass(attendance.getSession().getKlass().getId(), userDetails);
 
         attendance.setStatus(newStatus);
         attendanceRepository.save(attendance);
     }
 
+    // ========== ATTENDANCE REQUESTS ==========
 
-
-
-    public void approveAttendanceRequest(Long requestId) {
+    public void approveAttendanceRequest(Long requestId, Long sessionId, UserDetails userDetails) {
         AttendanceRequest request = attendanceRequestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Request not found"));
 
+        ClassSession session = classSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+
+        validateTeacherOwnsClass(session.getKlass().getId(), userDetails);
+
         if (request.getStatus() != RequestStatus.PENDING) {
-            throw new RuntimeException("Request is already handled.");
+            throw new RuntimeException("Request already handled.");
         }
 
         request.setStatus(RequestStatus.APPROVED);
         attendanceRequestRepository.save(request);
 
-        // Mark attendance
         Attendance attendance = new Attendance();
-        attendance.setKlass(request.getKlass());
+        attendance.setSession(session);
         attendance.setStudent(request.getStudent());
-        attendance.setDate(LocalDateTime.now());
+        attendance.setRecordedAt(LocalDateTime.now());
         attendance.setStatus(AttendanceStatus.PRESENT);
         attendanceRepository.save(attendance);
     }
 
-    public void rejectAttendanceRequest(Long requestId) {
+    public void rejectAttendanceRequest(Long requestId, Long sessionId, UserDetails userDetails) {
         AttendanceRequest request = attendanceRequestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Request not found"));
 
+        ClassSession session = classSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+
+        validateTeacherOwnsClass(session.getKlass().getId(), userDetails);
+
         if (request.getStatus() != RequestStatus.PENDING) {
-            throw new RuntimeException("Request is already handled.");
+            throw new RuntimeException("Request already handled.");
         }
 
         request.setStatus(RequestStatus.REJECTED);
         attendanceRequestRepository.save(request);
     }
 
-    public List<AttendanceRequest> getPendingRequests(Long classId) {
-        return attendanceRequestRepository.findByKlassIdAndStatus(classId, RequestStatus.PENDING);
+    public List<AttendanceRequest> getPendingSessionRequests(Long sessionId, UserDetails userDetails) {
+        ClassSession session = classSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+
+        validateTeacherOwnsClass(session.getKlass().getId(), userDetails);
+
+        return attendanceRequestRepository.findBySessionIdAndStatus(sessionId, RequestStatus.PENDING);
     }
 
+    // ========== STUDENT JOIN REQUESTS ==========
 
-    public void approveStudentJoin(String email, Long classId, Long studentId) throws AccessDeniedException {
-            Klass klass = validateOwnership(email, classId);
+    public void approveStudentJoin(Long classId, Long studentId, UserDetails userDetails) {
+        validateTeacherOwnsClass(classId, userDetails);
 
-            KlassStudent joinRequest = klassStudentRepository.findByKlassIdAndStudentId(classId, studentId)
-                    .orElseThrow(() -> new RuntimeException("Join request not found"));
+        KlassStudent joinRequest = klassStudentRepository.findByKlassIdAndStudentId(classId, studentId)
+                .orElseThrow(() -> new RuntimeException("Join request not found"));
 
-            joinRequest.setApproved(true);
-            klassStudentRepository.save(joinRequest);
-        }
-
-        public void rejectStudentJoin(String email, Long classId, Long studentId) throws AccessDeniedException {
-            Klass klass = validateOwnership(email, classId);
-
-            KlassStudent joinRequest = klassStudentRepository.findByKlassIdAndStudentId(classId, studentId)
-                    .orElseThrow(() -> new RuntimeException("Join request not found"));
-
-            klassStudentRepository.delete(joinRequest);
-        }
-
-        public List<StudentResponse> getPendingJoinRequests(String email, Long classId) throws AccessDeniedException {
-            Klass klass = validateOwnership(email, classId);
-
-            return klassStudentRepository.findAllByKlassIdAndApprovedFalse(classId).stream()
-                    .map(ks -> {
-                        Student s = ks.getStudent();
-                        return new StudentResponse(s.getId(), s.getName(), s.getEmail());
-                    })
-                    .toList();
-        }
-
-        private Klass validateOwnership(String email, Long classId) throws AccessDeniedException {
-            Klass klass = klassRepository.findById(classId)
-                    .orElseThrow(() -> new RuntimeException("Class not found"));
-
-            if (!klass.getTeacher().getEmail().equals(email)) {
-                throw new AccessDeniedException("You do not own this class.");
-            }
-
-            return klass;
-        }
-
-
-    private ClassResponse mapToResponse(Klass klass) {
-        ClassResponse response = new ClassResponse();
-        response.setId(klass.getId());
-        response.setName(klass.getName());
-        response.setDescription(klass.getDescription());
-        response.setClassTime(klass.getClassTime());
-        response.setMaxAbsencesAllowed(klass.getMaxAbsencesAllowed());
-        return response;
+        joinRequest.setApproved(true);
+        klassStudentRepository.save(joinRequest);
     }
+
+    public void rejectStudentJoin(Long classId, Long studentId, UserDetails userDetails) {
+        validateTeacherOwnsClass(classId, userDetails);
+
+        KlassStudent joinRequest = klassStudentRepository.findByKlassIdAndStudentId(classId, studentId)
+                .orElseThrow(() -> new RuntimeException("Join request not found"));
+
+        klassStudentRepository.delete(joinRequest);
+    }
+
+    public List<StudentResponse> getPendingJoinRequests(Long classId, UserDetails userDetails) {
+        validateTeacherOwnsClass(classId, userDetails);
+
+        return klassStudentRepository.findAllByKlassIdAndApprovedFalse(classId).stream()
+                .map(ks -> {
+                    Student s = ks.getStudent();
+                    return new StudentResponse(s.getId(), s.getName(), s.getEmail());
+                })
+                .collect(Collectors.toList());
+    }
+
+    // ========== HELPERS ==========
+
+    private Klass validateTeacherOwnsClass(Long classId, UserDetails userDetails) {
+        Klass klass = klassRepository.findById(classId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Class not found"));
+
+        if (!klass.getTeacher().getEmail().equals(userDetails.getUsername())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+        }
+        return klass;
+    }
+
+    private ClassResponse mapToClassResponse(Klass klass) {
+
+
+
+        return new ClassResponse(
+                klass.getId(),
+                klass.getName(),
+                klass.getDescription(),
+                klass.getClassTime(),
+                klass.getMaxAbsencesAllowed(),
+                klass.getJoinCode(),
+                klass.getStartDate(),
+                klass.getEndDate(),
+                klass.getDurationMinutes(),
+                klass.getScheduledDays(),
+                klass.getAcceptanceRadiusMeters()
+                // ✅ Include in response
+        );
+    }
+
 }
-
-
-
-
-

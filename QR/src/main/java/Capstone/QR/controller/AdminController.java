@@ -5,11 +5,12 @@ import Capstone.QR.model.Teacher;
 import Capstone.QR.service.AdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -20,36 +21,37 @@ public class AdminController {
     private final AdminService adminService;
 
     @PostMapping("/approve-teacher/{teacherId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void approveTeacher(@PathVariable Long teacherId) {
+    public ResponseEntity<?> approveTeacher(@PathVariable Long teacherId) {
         adminService.approveTeacher(teacherId);
+        return ResponseEntity.ok(Map.of("message", "Teacher approved successfully"));
     }
 
     @DeleteMapping("/reject-teacher/{teacherId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void rejectTeacher(@PathVariable Long teacherId) {
+    public ResponseEntity<?> rejectTeacher(@PathVariable Long teacherId) {
         adminService.rejectTeacher(teacherId);
+        return ResponseEntity.ok(Map.of("message", "Teacher rejected successfully"));
     }
 
     @DeleteMapping("/delete-class/{classId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteClass(@PathVariable Long classId) {
+    public ResponseEntity<?> deleteClass(@PathVariable Long classId) {
         adminService.deleteClass(classId);
+        return ResponseEntity.ok(Map.of("message", "Class deleted successfully"));
     }
 
     @GetMapping("/pending-teachers")
     public List<Teacher> getPendingTeachers() {
-        return adminService.getPendingTeachers(); // Could map to TeacherDTO if needed
+        return adminService.getPendingTeachers(); // Could be mapped to TeacherDTO
     }
 
     @GetMapping("/all-classes")
     public List<Klass> getAllClasses() {
-        return adminService.getAllClasses(); // Could map to ClassDTO if needed
+        return adminService.getAllClasses(); // Could be mapped to ClassDTO
     }
 
     @DeleteMapping("/remove-student/{classId}/{studentId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void removeStudentFromClass(@PathVariable Long classId, @PathVariable Long studentId) {
+    public ResponseEntity<?> removeStudentFromClass(@PathVariable Long classId,
+                                                    @PathVariable Long studentId) {
         adminService.removeStudentFromClass(classId, studentId);
+        return ResponseEntity.ok(Map.of("message", "Student removed from class"));
     }
 }

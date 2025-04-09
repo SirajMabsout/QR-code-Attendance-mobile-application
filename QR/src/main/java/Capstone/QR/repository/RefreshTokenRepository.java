@@ -13,6 +13,10 @@ import java.util.UUID;
 
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
     Optional<RefreshToken> findByToken(String token);
+
+    @Transactional
+    @Modifying
+    @Query("DELETE FROM RefreshToken r WHERE r.user = :user")
     void deleteByUser(User user);
     @Modifying
     @Transactional

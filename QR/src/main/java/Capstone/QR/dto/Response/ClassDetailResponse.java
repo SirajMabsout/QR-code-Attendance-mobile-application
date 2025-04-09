@@ -11,8 +11,7 @@ import java.util.List;
 
 @Data
 @AllArgsConstructor
-
-public class ClassResponse {
+public class ClassDetailResponse {
     private Long id;
     private String name;
     private String description;
@@ -23,12 +22,7 @@ public class ClassResponse {
     private LocalDate endDate;
     private int durationMinutes;
     private List<DayOfWeek> scheduledDays;
-    private double acceptanceRadiusMeters;
-
-
-
-    public ClassResponse() {
-
-    }
+    private List<SessionResponse> sessions;
+    private List<StudentResponse> enrolledStudents;
 
 }

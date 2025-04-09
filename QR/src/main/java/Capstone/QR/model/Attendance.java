@@ -12,21 +12,23 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+
 public class Attendance {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(optional = false)
     private Student student;
 
-    @ManyToOne
-    @JoinColumn(name = "klass_id")
-    private Klass klass; // ✅ correct name
-
-
-    private LocalDateTime date;
+    @ManyToOne(optional = false)
+    private ClassSession session;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private AttendanceStatus status;
+
+    @Column(nullable = false)
+    private LocalDateTime recordedAt;
 }

@@ -27,7 +27,8 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    private String profileImage;
+    @Column(name = "profile_image_url")
+    private String profileImageUrl;
 
     private LocalDateTime createdAt = LocalDateTime.now();
     private LocalDateTime updatedAt = LocalDateTime.now();
