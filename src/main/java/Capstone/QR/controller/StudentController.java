@@ -1,6 +1,7 @@
 package Capstone.QR.controller;
 
 import Capstone.QR.dto.Request.ScanQrRequest;
+import Capstone.QR.dto.Response.ApiResponse;
 import Capstone.QR.dto.Response.AttendanceResponse;
 import Capstone.QR.dto.Response.ClassResponse;
 import Capstone.QR.model.Attendance;
@@ -18,6 +19,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
+
+
 @RestController
 @RequestMapping("/api/student")
 @RequiredArgsConstructor
@@ -27,23 +30,24 @@ public class StudentController {
     private final StudentService studentService;
 
     @PostMapping("/join/{classCode}")
-    public ResponseEntity<?> joinClass(@PathVariable String classCode,
-                                       @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<ApiResponse<String>> joinClass(@PathVariable String classCode,
+                                                         @AuthenticationPrincipal UserDetails userDetails) {
         String message = studentService.requestJoinClass(userDetails.getUsername(), classCode);
-        return ResponseEntity.ok(message);
+        return ResponseEntity.ok(new ApiResponse<>(message, null));
     }
 
     @GetMapping("/my-classes")
-    public List<ClassResponse> getMyClasses(@AuthenticationPrincipal UserDetails userDetails) {
-        return studentService.getMyClasses(userDetails)
+    public ResponseEntity<ApiResponse<List<ClassResponse>>> getMyClasses(@AuthenticationPrincipal UserDetails userDetails) {
+        List<ClassResponse> classes = studentService.getMyClasses(userDetails)
                 .stream()
                 .map(this::mapToClassResponse)
                 .collect(Collectors.toList());
+        return ResponseEntity.ok(new ApiResponse<>("Classes fetched successfully", classes));
     }
 
     @PostMapping("/scan")
-    public ResponseEntity<String> scanQr(@RequestBody ScanQrRequest qrScanRequest,
-                                         @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<ApiResponse<String>> scanQr(@RequestBody ScanQrRequest qrScanRequest,
+                                                      @AuthenticationPrincipal UserDetails userDetails) {
         String resultMessage = studentService.scanQr(
                 qrScanRequest.getQrCodeData(),
                 qrScanRequest.getLatitude(),
@@ -51,66 +55,67 @@ public class StudentController {
                 qrScanRequest.getNetworkName(),
                 userDetails
         );
-        return ResponseEntity.ok(resultMessage);
+        return ResponseEntity.ok(new ApiResponse<>(resultMessage, null));
     }
 
     @GetMapping("/attendance/{classId}")
-    public List<AttendanceResponse> getMyAttendance(@PathVariable Long classId,
-                                                    @AuthenticationPrincipal UserDetails userDetails) {
-        return studentService.getMyAttendance(classId, userDetails)
+    public ResponseEntity<ApiResponse<List<AttendanceResponse>>> getMyAttendance(@PathVariable Long classId,
+                                                                                 @AuthenticationPrincipal UserDetails userDetails) {
+        List<AttendanceResponse> list = studentService.getMyAttendance(classId, userDetails)
                 .stream()
                 .map(this::mapToAttendanceResponse)
                 .collect(Collectors.toList());
+        return ResponseEntity.ok(new ApiResponse<>("Attendance fetched", list));
     }
 
     @GetMapping("/attendance-summary")
-    public List<AttendanceResponse> getAttendanceSummary(@AuthenticationPrincipal UserDetails userDetails) {
-        return studentService.getAttendanceSummary(userDetails)
+    public ResponseEntity<ApiResponse<List<AttendanceResponse>>> getAttendanceSummary(@AuthenticationPrincipal UserDetails userDetails) {
+        List<AttendanceResponse> list = studentService.getAttendanceSummary(userDetails)
                 .stream()
                 .map(this::mapToAttendanceResponse)
                 .collect(Collectors.toList());
+        return ResponseEntity.ok(new ApiResponse<>("Attendance summary fetched", list));
     }
 
     @GetMapping("/absences/{classId}")
-    public long countAbsences(@PathVariable Long classId,
-                              @AuthenticationPrincipal UserDetails userDetails) {
-        return studentService.countAbsences(classId, userDetails);
+    public ResponseEntity<ApiResponse<Long>> countAbsences(@PathVariable Long classId,
+                                                           @AuthenticationPrincipal UserDetails userDetails) {
+        long count = studentService.countAbsences(classId, userDetails);
+        return ResponseEntity.ok(new ApiResponse<>("Absences counted", count));
     }
 
     @GetMapping("/attendance-percentage/{classId}")
-    public double getAttendancePercentage(@PathVariable Long classId,
-                                          @AuthenticationPrincipal UserDetails userDetails) {
-        return studentService.getAttendancePercentage(classId, userDetails);
+    public ResponseEntity<ApiResponse<Double>> getAttendancePercentage(@PathVariable Long classId,
+                                                                       @AuthenticationPrincipal UserDetails userDetails) {
+        double percentage = studentService.getAttendancePercentage(classId, userDetails);
+        return ResponseEntity.ok(new ApiResponse<>("Attendance percentage calculated", percentage));
     }
 
-    // 🔄 NEW ENDPOINT: Get pending join requests
     @GetMapping("/pending-join-requests")
-    public ResponseEntity<?> getPendingJoinRequests(@AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(studentService.getPendingJoinRequests(userDetails));
+    public ResponseEntity<ApiResponse<Object>> getPendingJoinRequests(@AuthenticationPrincipal UserDetails userDetails) {
+        Object data = studentService.getPendingJoinRequests(userDetails);
+        return ResponseEntity.ok(new ApiResponse<>("Pending join requests fetched", data));
     }
 
-    // 🔄 NEW ENDPOINT: Cancel a pending join request
     @DeleteMapping("/cancel-join-request/{classId}")
-    public ResponseEntity<?> cancelJoinRequest(@PathVariable Long classId,
-                                               @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<ApiResponse<String>> cancelJoinRequest(@PathVariable Long classId,
+                                                                 @AuthenticationPrincipal UserDetails userDetails) {
         studentService.cancelJoinRequest(classId, userDetails);
-        return ResponseEntity.ok("Join request cancelled successfully.");
+        return ResponseEntity.ok(new ApiResponse<>("Join request cancelled successfully", null));
     }
 
-    // 🔄 NEW ENDPOINT: View class details (with session list)
     @GetMapping("/class/{classId}")
-    public ResponseEntity<?> getClassDetails(@PathVariable Long classId,
-                                             @AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(studentService.getClassDetail(classId, userDetails));
+    public ResponseEntity<ApiResponse<Object>> getClassDetails(@PathVariable Long classId,
+                                                               @AuthenticationPrincipal UserDetails userDetails) {
+        Object details = studentService.getClassDetail(classId, userDetails);
+        return ResponseEntity.ok(new ApiResponse<>("Class details fetched", details));
     }
 
-    // 🔄 NEW ENDPOINT: View attendance requests submitted by student
     @GetMapping("/attendance-requests")
-    public ResponseEntity<?> getMyAttendanceRequests(@AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(studentService.getMyAttendanceRequests(userDetails));
+    public ResponseEntity<ApiResponse<Object>> getMyAttendanceRequests(@AuthenticationPrincipal UserDetails userDetails) {
+        Object data = studentService.getMyAttendanceRequests(userDetails);
+        return ResponseEntity.ok(new ApiResponse<>("Attendance requests fetched", data));
     }
-
-    // === DTO Mappers ===
 
     private ClassResponse mapToClassResponse(Klass klass) {
         ClassResponse dto = new ClassResponse();

@@ -27,131 +27,118 @@ public class TeacherController {
     private final TeacherService teacherService;
     private final AttendanceExportService attendanceExportService;
 
-    // ==================== Class Management ====================
-
     @PostMapping("/create-class")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ClassResponse createClass(@RequestBody @Valid CreateClassRequest request,
-                                     @AuthenticationPrincipal UserDetails userDetails) {
-        return teacherService.createClass(request, userDetails);
+    public ResponseEntity<ApiResponse<ClassResponse>> createClass(@RequestBody @Valid CreateClassRequest request,
+                                                                  @AuthenticationPrincipal UserDetails userDetails) {
+        ClassResponse created = teacherService.createClass(request, userDetails);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponse<>("Class created successfully", created));
     }
 
     @GetMapping("/my-classes")
-    public List<ClassResponse> getAllClasses(@AuthenticationPrincipal UserDetails userDetails) {
-        return teacherService.getAllClasses(userDetails);
+    public ResponseEntity<ApiResponse<List<ClassResponse>>> getAllClasses(@AuthenticationPrincipal UserDetails userDetails) {
+        List<ClassResponse> classes = teacherService.getAllClasses(userDetails);
+        return ResponseEntity.ok(new ApiResponse<>("Classes fetched successfully", classes));
     }
 
     @GetMapping("/class/{classId}")
-    public ClassDetailResponse getClassDetails(@PathVariable Long classId,
-                                         @AuthenticationPrincipal UserDetails userDetails) {
-        return teacherService.getClassDetails(classId, userDetails);
+    public ResponseEntity<ApiResponse<ClassDetailResponse>> getClassDetails(@PathVariable Long classId,
+                                                                            @AuthenticationPrincipal UserDetails userDetails) {
+        ClassDetailResponse details = teacherService.getClassDetails(classId, userDetails);
+        return ResponseEntity.ok(new ApiResponse<>("Class details fetched", details));
     }
-
 
     @GetMapping("/session/{sessionId}")
-    public SessionDetailResponse getSessionDetails(@PathVariable Long sessionId,
-                                                   @AuthenticationPrincipal UserDetails userDetails) {
-        return teacherService.getSessionDetails(sessionId, userDetails);
+    public ResponseEntity<ApiResponse<SessionDetailResponse>> getSessionDetails(@PathVariable Long sessionId,
+                                                                                @AuthenticationPrincipal UserDetails userDetails) {
+        SessionDetailResponse details = teacherService.getSessionDetails(sessionId, userDetails);
+        return ResponseEntity.ok(new ApiResponse<>("Session details fetched", details));
     }
 
-
-
-    // ==================== Join Requests ====================
-
     @PostMapping("/approve-join/{classId}/{studentId}")
-    public ResponseEntity<?> approveStudent(@PathVariable Long classId,
-                                            @PathVariable Long studentId,
-                                            @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<ApiResponse<String>> approveStudent(@PathVariable Long classId,
+                                                              @PathVariable Long studentId,
+                                                              @AuthenticationPrincipal UserDetails userDetails) {
         teacherService.approveStudentJoin(classId, studentId, userDetails);
-        return ResponseEntity.ok("Student approved for class.");
+        return ResponseEntity.ok(new ApiResponse<>("Student approved for class", null));
     }
 
     @DeleteMapping("/reject-join/{classId}/{studentId}")
-    public ResponseEntity<?> rejectStudent(@PathVariable Long classId,
-                                           @PathVariable Long studentId,
-                                           @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<ApiResponse<String>> rejectStudent(@PathVariable Long classId,
+                                                             @PathVariable Long studentId,
+                                                             @AuthenticationPrincipal UserDetails userDetails) {
         teacherService.rejectStudentJoin(classId, studentId, userDetails);
-        return ResponseEntity.ok("Join request rejected.");
+        return ResponseEntity.ok(new ApiResponse<>("Join request rejected", null));
     }
 
     @GetMapping("/pending-join-requests/{classId}")
-    public ResponseEntity<?> getPendingJoinRequests(@PathVariable Long classId,
-                                                    @AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(teacherService.getPendingJoinRequests(classId, userDetails));
+    public ResponseEntity<ApiResponse<Object>> getPendingJoinRequests(@PathVariable Long classId,
+                                                                      @AuthenticationPrincipal UserDetails userDetails) {
+        Object list = teacherService.getPendingJoinRequests(classId, userDetails);
+        return ResponseEntity.ok(new ApiResponse<>("Pending join requests fetched", list));
     }
 
-    // ==================== QR Code for Session ====================
-
     @PostMapping("/session/{sessionId}/generate-qr")
-    public QRCodeResponse generateQrCode(@PathVariable Long sessionId,
-                                         @RequestBody @Valid GenerateQrRequest qrRequest, @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<ApiResponse<QRCodeResponse>> generateQrCode(@PathVariable Long sessionId,
+                                                                      @RequestBody @Valid GenerateQrRequest qrRequest,
+                                                                      @AuthenticationPrincipal UserDetails userDetails) {
         QRCode qrCode = teacherService.generateQrCodeForSession(sessionId, qrRequest.getLatitude(), qrRequest.getLongitude(), userDetails);
-        return mapToQRCodeResponse(qrCode);
+        return ResponseEntity.ok(new ApiResponse<>("QR Code generated", mapToQRCodeResponse(qrCode)));
     }
 
     @GetMapping("/class/{classId}/student/{studentId}/stats")
-    public StudentClassAttendanceStatsResponse getStudentStatsForClass(@PathVariable Long classId,
-                                                                       @PathVariable Long studentId,
-                                                                       @AuthenticationPrincipal UserDetails userDetails) {
-        return teacherService.getStudentClassStats(classId, studentId, userDetails);
+    public ResponseEntity<ApiResponse<StudentClassAttendanceStatsResponse>> getStudentStatsForClass(@PathVariable Long classId,
+                                                                                                    @PathVariable Long studentId,
+                                                                                                    @AuthenticationPrincipal UserDetails userDetails) {
+        StudentClassAttendanceStatsResponse stats = teacherService.getStudentClassStats(classId, studentId, userDetails);
+        return ResponseEntity.ok(new ApiResponse<>("Student stats fetched", stats));
     }
 
-
-    // ==================== Attendance Per Session ====================
-
     @GetMapping("/session/{sessionId}/attendance/{studentId}")
-    public List<AttendanceResponse> getSessionAttendance(@PathVariable Long sessionId,
-                                                         @PathVariable Long studentId,
-                                                         @AuthenticationPrincipal UserDetails userDetails) {
-        return teacherService.getSessionAttendance(sessionId, studentId, userDetails)
-                .stream()
-                .map(this::mapToAttendanceResponse)
-                .collect(Collectors.toList());
+    public ResponseEntity<ApiResponse<List<AttendanceResponse>>> getSessionAttendance(@PathVariable Long sessionId,
+                                                                                      @PathVariable Long studentId,
+                                                                                      @AuthenticationPrincipal UserDetails userDetails) {
+        List<AttendanceResponse> responses = teacherService.getSessionAttendance(sessionId, studentId, userDetails)
+                .stream().map(this::mapToAttendanceResponse).collect(Collectors.toList());
+        return ResponseEntity.ok(new ApiResponse<>("Attendance list fetched", responses));
     }
 
     @PutMapping("/session/{sessionId}/attendance/{attendanceId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void editAttendance(@PathVariable Long sessionId,
-                               @PathVariable Long attendanceId,
-                               @RequestParam AttendanceStatus newStatus,
-                               @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<ApiResponse<String>> editAttendance(@PathVariable Long sessionId,
+                                                              @PathVariable Long attendanceId,
+                                                              @RequestParam AttendanceStatus newStatus,
+                                                              @AuthenticationPrincipal UserDetails userDetails) {
         teacherService.editAttendance(sessionId, attendanceId, newStatus, userDetails);
+        return ResponseEntity.ok(new ApiResponse<>("Attendance updated", null));
     }
 
-    // ==================== Attendance Requests (Session-Based) ====================
-
     @PostMapping("/session/{sessionId}/approve-request/{requestId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void approveRequest(@PathVariable Long sessionId,
-                               @PathVariable Long requestId,
-                               @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<ApiResponse<String>> approveRequest(@PathVariable Long sessionId,
+                                                              @PathVariable Long requestId,
+                                                              @AuthenticationPrincipal UserDetails userDetails) {
         teacherService.approveAttendanceRequest(requestId, sessionId, userDetails);
+        return ResponseEntity.ok(new ApiResponse<>("Attendance request approved", null));
     }
 
     @PostMapping("/session/{sessionId}/reject-request/{requestId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void rejectRequest(@PathVariable Long sessionId,
-                              @PathVariable Long requestId,
-                              @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<ApiResponse<String>> rejectRequest(@PathVariable Long sessionId,
+                                                             @PathVariable Long requestId,
+                                                             @AuthenticationPrincipal UserDetails userDetails) {
         teacherService.rejectAttendanceRequest(requestId, sessionId, userDetails);
+        return ResponseEntity.ok(new ApiResponse<>("Attendance request rejected", null));
     }
 
     @GetMapping("/session/{sessionId}/pending-requests")
-    public List<AttendanceRequestResponse> getPendingSessionRequests(@PathVariable Long sessionId,
-                                                                     @AuthenticationPrincipal UserDetails userDetails) {
-        return teacherService.getPendingSessionRequests(sessionId, userDetails)
-                .stream()
-                .map(this::mapToAttendanceRequestResponse)
-                .collect(Collectors.toList());
+    public ResponseEntity<ApiResponse<List<AttendanceRequestResponse>>> getPendingSessionRequests(@PathVariable Long sessionId,
+                                                                                                  @AuthenticationPrincipal UserDetails userDetails) {
+        List<AttendanceRequestResponse> list = teacherService.getPendingSessionRequests(sessionId, userDetails)
+                .stream().map(this::mapToAttendanceRequestResponse).collect(Collectors.toList());
+        return ResponseEntity.ok(new ApiResponse<>("Pending attendance requests fetched", list));
     }
-
-    // ==================== Export ====================
 
     @GetMapping("/export-attendance-excel/{classId}")
     public ResponseEntity<byte[]> exportAttendanceExcel(@PathVariable Long classId) {
         try {
             ByteArrayInputStream stream = attendanceExportService.exportAttendanceSheet(classId);
-
             HttpHeaders headers = new HttpHeaders();
             headers.add("Content-Disposition", "attachment; filename=attendance_" + classId + ".xlsx");
 
@@ -159,13 +146,10 @@ public class TeacherController {
                     .headers(headers)
                     .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                     .body(stream.readAllBytes());
-
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
-
-    // ==================== DTO Mappers ====================
 
     private AttendanceResponse mapToAttendanceResponse(Attendance attendance) {
         AttendanceResponse dto = new AttendanceResponse();

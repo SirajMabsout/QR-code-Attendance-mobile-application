@@ -1,6 +1,7 @@
 package Capstone.QR.controller;
 
 import Capstone.QR.dto.Request.ChangePasswordRequest;
+import Capstone.QR.dto.Response.ApiResponse;
 import Capstone.QR.dto.Response.ImageUploadResponse;
 import Capstone.QR.dto.Response.UserResponse;
 import Capstone.QR.service.UserService;
@@ -12,8 +13,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Map;
-
 @RestController
 @RequestMapping("/api/user")
 @RequiredArgsConstructor
@@ -21,39 +20,37 @@ public class UserController {
 
     private final UserService userService;
 
-    // ✅ 1. Get current authenticated user's profile
     @GetMapping("/profile")
-    public ResponseEntity<UserResponse> getProfile(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<ApiResponse<UserResponse>> getProfile(@AuthenticationPrincipal UserDetails userDetails) {
         try {
-            return ResponseEntity.ok(userService.getUserProfile(userDetails.getUsername()));
+            UserResponse profile = userService.getUserProfile(userDetails.getUsername());
+            return ResponseEntity.ok(new ApiResponse<>("Profile fetched successfully", profile));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>("User not found", null));
         }
     }
 
-    // ✅ 2. Upload profile image and update user record
     @PostMapping("/upload-profile-icon")
-    public ResponseEntity<ImageUploadResponse> uploadProfileIcon(@RequestParam("image") MultipartFile image,
-                                                                    @RequestParam("userId") Long userId) {
+    public ResponseEntity<ApiResponse<ImageUploadResponse>> uploadProfileIcon(@RequestParam("image") MultipartFile image,
+                                                                              @RequestParam("userId") Long userId) {
         try {
             ImageUploadResponse response = userService.uploadProfileIcon(userId, image);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(new ApiResponse<>("Image uploaded successfully", response));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ImageUploadResponse("error", e.getMessage()));
+                    .body(new ApiResponse<>("Image upload failed", new ImageUploadResponse("error", e.getMessage())));
         }
     }
 
-    // ✅ 3. Change password
     @PutMapping("/change-password")
-    public ResponseEntity<?> changePassword(@AuthenticationPrincipal UserDetails userDetails,
-                                            @RequestBody ChangePasswordRequest request) {
+    public ResponseEntity<ApiResponse<String>> changePassword(@AuthenticationPrincipal UserDetails userDetails,
+                                                              @RequestBody ChangePasswordRequest request) {
         try {
             userService.changePassword(userDetails, request.getOldPassword(), request.getNewPassword());
-            return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
+            return ResponseEntity.ok(new ApiResponse<>("Password changed successfully", null));
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest().body(new ApiResponse<>(e.getMessage(), null));
         }
     }
-
 }

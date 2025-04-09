@@ -1,6 +1,8 @@
 package Capstone.QR.controller;
 
 import Capstone.QR.dto.Request.*;
+import Capstone.QR.dto.Response.ApiResponse;
+import Capstone.QR.dto.Response.LoginResponse;
 import Capstone.QR.model.*;
 import Capstone.QR.repository.*;
 import Capstone.QR.security.jwt.JwtUtil;
@@ -24,8 +26,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
-import java.util.*;
+
 
 @RestController
 @RequestMapping("/auth")
@@ -40,53 +41,42 @@ public class AuthController {
     private final TeacherRepository teacherRepository;
     private final PasswordResetService resetService;
 
-    // === Register ===
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody @Valid RegisterRequest request) {
+    public ResponseEntity<ApiResponse<String>> register(@RequestBody @Valid RegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already registered.");
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiResponse<>("Email already registered", null));
         }
 
         Role role = request.getRole();
-
-        // ❌ Disallow admin registrations through this endpoint
         if (role == Role.ADMIN) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Admin registration is not allowed.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse<>("Admin registration is not allowed", null));
         }
 
         User user;
-
         switch (role) {
-            case TEACHER:
-                user = new Teacher();
-                break;
-
-            case STUDENT:
-                user = new Student();
-                break;
-
-            default:
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid role specified.");
+            case TEACHER -> user = new Teacher();
+            case STUDENT -> user = new Student();
+            default -> {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ApiResponse<>("Invalid role specified", null));
+            }
         }
 
-        // Common fields for all users
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(role);
-
         userRepository.save(user);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully.");
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new ApiResponse<>("User registered successfully", null));
     }
 
-
-
-    // === Login (set HttpOnly cookies) ===
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletResponse response) {
+    public ResponseEntity<ApiResponse<LoginResponse>> login(@RequestBody LoginRequest request, HttpServletResponse response) {
         try {
-            // ✅ This authenticates email & password
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
             );
@@ -94,26 +84,23 @@ public class AuthController {
             User user = userRepository.findByEmail(request.getEmail())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            // ✅ BLOCK unapproved teachers
             if (user.getRole() == Role.TEACHER) {
                 Teacher teacher = teacherRepository.findById(user.getId())
                         .orElseThrow(() -> new RuntimeException("Teacher profile not found"));
-
                 if (!teacher.isApproved()) {
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                            .body("Your teacher account is pending admin approval.");
+                            .body(new ApiResponse<>("Your teacher account is pending admin approval.", null));
                 }
             }
 
-            // ✅ Generate tokens and cookies
             String accessToken = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
             String refreshToken = refreshTokenService.createRefreshToken(user);
 
             ResponseCookie accessCookie = ResponseCookie.from("access_token", accessToken)
                     .httpOnly(true)
-                    .secure(false) // Set to true in production
+                    .secure(false)
                     .path("/")
-                    .maxAge(60*60 )
+                    .maxAge(60 * 60)
                     .sameSite("Strict")
                     .build();
 
@@ -128,21 +115,17 @@ public class AuthController {
             response.addHeader("Set-Cookie", accessCookie.toString());
             response.addHeader("Set-Cookie", refreshCookie.toString());
 
-            Map<String, Object> responseBody = new HashMap<>();
-            responseBody.put("message", "Login was successful");
-            responseBody.put("role", user.getRole().name());
-
-            return ResponseEntity.ok(responseBody);
-
+            LoginResponse loginResponse = new LoginResponse("Login was successful", user.getRole().name());
+            return ResponseEntity.ok(new ApiResponse<>("Login was successful", loginResponse));
 
         } catch (AuthenticationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>("Invalid credentials.", null));
         }
     }
 
-    // === Refresh Access Token using cookie ===
     @PostMapping("/refresh")
-    public ResponseEntity<?> refreshAccessToken(HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<ApiResponse<String>> refreshAccessToken(HttpServletRequest request, HttpServletResponse response) {
         String refreshToken = null;
 
         if (request.getCookies() != null) {
@@ -155,7 +138,7 @@ public class AuthController {
         }
 
         if (refreshToken == null || refreshToken.isBlank()) {
-            return ResponseEntity.badRequest().body("Refresh token is missing.");
+            return ResponseEntity.badRequest().body(new ApiResponse<>("Refresh token is missing.", null));
         }
 
         try {
@@ -172,16 +155,16 @@ public class AuthController {
                     .build();
 
             response.addHeader("Set-Cookie", newAccess.toString());
-            return ResponseEntity.ok("Access token refreshed");
+            return ResponseEntity.ok(new ApiResponse<>("Access token refreshed", null));
 
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>(e.getMessage(), null));
         }
     }
 
-    // === Logout (clear cookies + revoke refresh token) ===
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(@AuthenticationPrincipal UserDetails userDetails, HttpServletResponse response) {
+    public ResponseEntity<ApiResponse<String>> logout(@AuthenticationPrincipal UserDetails userDetails, HttpServletResponse response) {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -200,39 +183,28 @@ public class AuthController {
         response.addHeader("Set-Cookie", clearAccess.toString());
         response.addHeader("Set-Cookie", clearRefresh.toString());
 
-        return ResponseEntity.ok("Logged out successfully");
+        return ResponseEntity.ok(new ApiResponse<>("Logged out successfully", null));
     }
 
-
-
-
     @PostMapping("/forgot-password")
-    public ResponseEntity<?> forgotPassword(@RequestBody @Valid ForgotPasswordRequest request) {
+    public ResponseEntity<ApiResponse<String>> forgotPassword(@RequestBody @Valid ForgotPasswordRequest request) {
         resetService.sendResetCode(request.getEmail());
-        return ResponseEntity.ok("Reset code sent");
+        return ResponseEntity.ok(new ApiResponse<>("Reset code sent", null));
     }
 
     @PostMapping("/verify-reset-code")
-    public ResponseEntity<?> verifyResetCode(@RequestBody @Valid VerifyCodeRequest request) {
+    public ResponseEntity<ApiResponse<String>> verifyResetCode(@RequestBody @Valid VerifyCodeRequest request) {
         resetService.verifyResetCode(request.getEmail(), request.getCode());
-        return ResponseEntity.ok("Code verified");
+        return ResponseEntity.ok(new ApiResponse<>("Code verified", null));
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity<?> resetPassword(@RequestBody @Valid ResetPasswordRequest request) {
+    public ResponseEntity<ApiResponse<String>> resetPassword(@RequestBody @Valid ResetPasswordRequest request) {
         resetService.resetPassword(
                 request.getEmail(),
                 request.getCode(),
                 request.getNewPassword()
-
         );
-        return ResponseEntity.ok("Password reset successfully");
+        return ResponseEntity.ok(new ApiResponse<>("Password reset successfully", null));
     }
-
-    }
-
-
-
-
-
-
+}
