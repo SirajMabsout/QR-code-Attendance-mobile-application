@@ -29,8 +29,7 @@ jobs:
         run: ./gradlew build -x test
 
       - name: Rename built JAR to app.jar
-        working-directory: ./QR
-        run: mv build/libs/*.jar build/libs/app.jar
+        run: mv QR/build/libs/*.jar QR/build/libs/app.jar
 
       - name: Upload JAR for deployment
         uses: actions/upload-artifact@v4
