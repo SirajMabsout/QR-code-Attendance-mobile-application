@@ -28,14 +28,11 @@ jobs:
         working-directory: ./QR
         run: ./gradlew build -x test
 
-      - name: Rename built JAR to app.jar
-        run: mv QR/build/libs/QR-0.0.1-SNAPSHOT.jar QR/build/libs/app.jar
-
-      - name: Upload JAR for deployment
+      - name: Upload any JAR for deployment
         uses: actions/upload-artifact@v4
         with:
           name: java-app
-          path: QR/build/libs/app.jar
+          path: QR/build/libs/*.jar
 
   deploy:
     runs-on: ubuntu-latest
@@ -53,14 +50,14 @@ jobs:
         with:
           name: java-app
 
-      - name: Show what's in the artifact folder
-        run: ls -l java-app/
+      - name: List contents to debug
+        run: ls -l
 
-      - name: Rename whatever JAR is there to app.jar
+      - name: Rename the real JAR to app.jar
         run: |
-          JAR_FILE=$(find java-app -name "*.jar" | head -n 1)
-          echo "Found JAR: $JAR_FILE"
-          cp "$JAR_FILE" app.jar
+          JAR=$(find . -name "*.jar" | head -n 1)
+          echo "Found: $JAR"
+          cp "$JAR" app.jar
 
       - name: Login to Azure
         uses: azure/login@v2
