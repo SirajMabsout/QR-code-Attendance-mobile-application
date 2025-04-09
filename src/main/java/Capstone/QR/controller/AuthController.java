@@ -128,7 +128,12 @@ public class AuthController {
             response.addHeader("Set-Cookie", accessCookie.toString());
             response.addHeader("Set-Cookie", refreshCookie.toString());
 
-            return ResponseEntity.ok("Login was successful");
+            Map<String, Object> responseBody = new HashMap<>();
+            responseBody.put("message", "Login was successful");
+            responseBody.put("role", user.getRole().name());
+
+            return ResponseEntity.ok(responseBody);
+
 
         } catch (AuthenticationException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials.");
