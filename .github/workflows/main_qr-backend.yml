@@ -53,8 +53,8 @@ jobs:
         with:
           name: java-app
 
-      - name: Confirm JAR is here
-        run: ls -l
+      - name: Move app.jar to root
+        run: mv java-app/app.jar app.jar
 
       - name: Login to Azure
         uses: azure/login@v2
