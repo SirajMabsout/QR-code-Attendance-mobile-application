@@ -1,6 +1,8 @@
 package Capstone.QR.controller;
 
+import Capstone.QR.dto.Response.AdminClassResponse;
 import Capstone.QR.dto.Response.ApiResponse;
+import Capstone.QR.dto.Response.PendingTeacherResponse;
 import Capstone.QR.model.Klass;
 import Capstone.QR.model.Teacher;
 import Capstone.QR.service.AdminService;
@@ -38,16 +40,18 @@ public class AdminController {
     }
 
     @GetMapping("/pending-teachers")
-    public ResponseEntity<ApiResponse<List<Teacher>>> getPendingTeachers() {
-        List<Teacher> teachers = adminService.getPendingTeachers();
-        return ResponseEntity.ok(new ApiResponse<>("Pending teachers fetched", teachers));
+    public ResponseEntity<ApiResponse<List<PendingTeacherResponse>>> getPendingTeachers() {
+        List<PendingTeacherResponse> data = adminService.getPendingTeachers();
+        return ResponseEntity.ok(new ApiResponse<>("Pending teachers retrieved", data));
     }
 
+
     @GetMapping("/all-classes")
-    public ResponseEntity<ApiResponse<List<Klass>>> getAllClasses() {
-        List<Klass> classes = adminService.getAllClasses();
-        return ResponseEntity.ok(new ApiResponse<>("All classes fetched", classes));
+    public ResponseEntity<ApiResponse<List<AdminClassResponse>>> getAllClasses() {
+        List<AdminClassResponse> data = adminService.getAllClassesForAdmin();
+        return ResponseEntity.ok(new ApiResponse<>("All classes fetched", data));
     }
+
 
     @DeleteMapping("/remove-student/{classId}/{studentId}")
     public ResponseEntity<ApiResponse<String>> removeStudentFromClass(@PathVariable Long classId,

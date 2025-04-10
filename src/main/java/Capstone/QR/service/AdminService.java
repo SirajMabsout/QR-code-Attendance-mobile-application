@@ -1,6 +1,8 @@
 package Capstone.QR.service;
 
 
+import Capstone.QR.dto.Response.AdminClassResponse;
+import Capstone.QR.dto.Response.PendingTeacherResponse;
 import Capstone.QR.model.Klass;
 import Capstone.QR.model.KlassStudent;
 import Capstone.QR.model.Teacher;
@@ -12,6 +14,7 @@ import Capstone.QR.repository.TeacherRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -40,13 +43,32 @@ public class AdminService {
         klassRepository.deleteById(classId);
     }
 
-    public List<Teacher> getPendingTeachers() {
-        return teacherRepository.findByApprovedFalse();
+    public List<PendingTeacherResponse> getPendingTeachers() {
+        return teacherRepository.findByApprovedFalse().stream()
+                .map(teacher -> new PendingTeacherResponse(
+                        teacher.getId(),
+                        teacher.getName(),
+                        teacher.getEmail()
+                ))
+                .toList();
     }
 
-    public List<Klass> getAllClasses() {
-        return klassRepository.findAll();
+
+    public List<AdminClassResponse> getAllClassesForAdmin() {
+        List<Klass> classes = klassRepository.findAll();
+
+        return classes.stream().map(klass -> {
+            boolean isFinished = klass.getEndDate().isBefore(LocalDate.now());
+            String teacherEmail = klass.getTeacher().getEmail(); // assuming you have this relation
+            return new AdminClassResponse(
+                    klass.getId(),
+                    klass.getName(),
+                    teacherEmail,
+                    isFinished
+            );
+        }).toList();
     }
+
 
     // === Unregister student from class ===
     public void removeStudentFromClass(Long classId, Long studentId) {
