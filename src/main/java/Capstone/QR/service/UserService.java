@@ -24,10 +24,10 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final ImgurImageService imgurImageService;
 
-        public ImageUploadResponse uploadProfileIcon(Long userId, MultipartFile image) throws IOException, InterruptedException {
+        public ImageUploadResponse uploadProfileIcon(String email, MultipartFile image) throws IOException, InterruptedException {
             String imageUrl = imgurImageService.uploadImage(image);
 
-            User user = userRepository.findById(userId)
+            User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new NoSuchElementException("User not found"));
 
             user.setProfileImageUrl(imageUrl);

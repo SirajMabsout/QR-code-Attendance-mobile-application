@@ -32,16 +32,20 @@ public class UserController {
     }
 
     @PostMapping("/upload-profile-icon")
-    public ResponseEntity<ApiResponse<ImageUploadResponse>> uploadProfileIcon(@RequestParam("image") MultipartFile image,
-                                                                              @RequestParam("userId") Long userId) {
+    public ResponseEntity<ApiResponse<ImageUploadResponse>> uploadProfileIcon(
+            @RequestParam("image") MultipartFile image,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
         try {
-            ImageUploadResponse response = userService.uploadProfileIcon(userId, image);
+            String email = userDetails.getUsername();
+            ImageUploadResponse response = userService.uploadProfileIcon(email, image);
             return ResponseEntity.ok(new ApiResponse<>("Image uploaded successfully", response));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>("Image upload failed", new ImageUploadResponse("error", e.getMessage())));
         }
     }
+
 
     @PutMapping("/change-password")
     public ResponseEntity<ApiResponse<String>> changePassword(@AuthenticationPrincipal UserDetails userDetails,
