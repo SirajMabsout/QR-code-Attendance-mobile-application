@@ -17,4 +17,5 @@ public interface KlassStudentRepository extends JpaRepository<KlassStudent, Long
     List<KlassStudent> findAllByStudentIdAndApprovedTrue(Long studentId);
 
     List<KlassStudent> findAllByStudentIdAndApprovedFalse(Long studentId);
+    List<KlassStudent> findByKlassIdAndApprovedTrue(Long klassId);
 }

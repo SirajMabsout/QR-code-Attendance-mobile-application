@@ -3,6 +3,7 @@ package Capstone.QR.controller;
 import Capstone.QR.dto.Response.AdminClassResponse;
 import Capstone.QR.dto.Response.ApiResponse;
 import Capstone.QR.dto.Response.PendingTeacherResponse;
+import Capstone.QR.dto.Response.StudentInClassResponse;
 import Capstone.QR.model.Klass;
 import Capstone.QR.model.Teacher;
 import Capstone.QR.service.AdminService;
@@ -45,6 +46,11 @@ public class AdminController {
         return ResponseEntity.ok(new ApiResponse<>("Pending teachers retrieved", data));
     }
 
+    @GetMapping("/class/{classId}/students")
+    public ApiResponse<List<StudentInClassResponse>> getStudentsInClass(@PathVariable Long classId) {
+        List<StudentInClassResponse> students = adminService.getStudentsInClass(classId);
+        return new ApiResponse<>("Students retrieved successfully", students);
+    }
 
     @GetMapping("/all-classes")
     public ResponseEntity<ApiResponse<List<AdminClassResponse>>> getAllClasses() {

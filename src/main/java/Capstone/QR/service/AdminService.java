@@ -3,6 +3,7 @@ package Capstone.QR.service;
 
 import Capstone.QR.dto.Response.AdminClassResponse;
 import Capstone.QR.dto.Response.PendingTeacherResponse;
+import Capstone.QR.dto.Response.StudentInClassResponse;
 import Capstone.QR.model.Klass;
 import Capstone.QR.model.KlassStudent;
 import Capstone.QR.model.Teacher;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -52,6 +54,19 @@ public class AdminService {
                 ))
                 .toList();
     }
+
+
+    public List<StudentInClassResponse> getStudentsInClass(Long classId) {
+        List<KlassStudent> klassStudents = klassStudentRepository.findByKlassIdAndApprovedTrue(classId);
+
+        return klassStudents.stream()
+                .map(ks -> new StudentInClassResponse(
+                        ks.getStudent().getId(),
+                        ks.getStudent().getName(),
+                        ks.getStudent().getEmail()))
+                .collect(Collectors.toList());
+    }
+
 
 
     public List<AdminClassResponse> getAllClassesForAdmin() {
