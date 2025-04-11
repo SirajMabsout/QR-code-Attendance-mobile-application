@@ -1,5 +1,6 @@
 package Capstone.QR.controller;
 
+import Capstone.QR.dto.Request.AttendanceUpdateRequest;
 import Capstone.QR.dto.Request.CreateClassRequest;
 import Capstone.QR.dto.Request.GenerateQrRequest;
 import Capstone.QR.dto.Response.*;
@@ -105,11 +106,12 @@ public class TeacherController {
     @PutMapping("/session/{sessionId}/attendance/{attendanceId}")
     public ResponseEntity<ApiResponse<String>> editAttendance(@PathVariable Long sessionId,
                                                               @PathVariable Long attendanceId,
-                                                              @RequestParam AttendanceStatus newStatus,
+                                                              @RequestBody AttendanceUpdateRequest request,
                                                               @AuthenticationPrincipal UserDetails userDetails) {
-        teacherService.editAttendance(sessionId, attendanceId, newStatus, userDetails);
+        teacherService.editAttendance(sessionId, attendanceId, request.getStatus(), userDetails);
         return ResponseEntity.ok(new ApiResponse<>("Attendance updated", null));
     }
+
 
     @PostMapping("/session/{sessionId}/approve-request/{requestId}")
     public ResponseEntity<ApiResponse<String>> approveRequest(@PathVariable Long sessionId,
