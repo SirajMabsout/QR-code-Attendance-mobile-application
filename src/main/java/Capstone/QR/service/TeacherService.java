@@ -221,7 +221,6 @@ public class TeacherService {
 
         validateTeacherOwnsClass(session.getKlass().getId(), userDetails);
 
-        // ✅ If session is canceled, return without attendance list
         if (session.isCanceled()) {
             return new SessionDetailResponse(
                     session.getId(),
@@ -229,20 +228,17 @@ public class TeacherService {
                     session.getSessionTime(),
                     true,
                     session.getTopic(),
-                    List.of() // empty attendance list
+                    List.of()
             );
         }
 
-        // Get all approved students for this class
         List<Student> enrolledStudents = klassStudentRepository.findAllByKlassIdAndApprovedTrue(session.getKlass().getId())
                 .stream()
                 .map(KlassStudent::getStudent)
                 .toList();
 
-        // Fetch existing attendance records
         List<Attendance> recordedAttendances = attendanceRepository.findBySession_Id(sessionId);
 
-        // Map studentId -> attendance
         Map<Long, Attendance> attendanceMap = recordedAttendances.stream()
                 .collect(Collectors.toMap(a -> a.getStudent().getId(), a -> a));
 
@@ -253,39 +249,48 @@ public class TeacherService {
         List<AttendanceResponse> attendanceResponses = enrolledStudents.stream()
                 .map(student -> {
                     Attendance attendance = attendanceMap.get(student.getId());
+                    String imageUrl = student.getProfileImageUrl(); // Get student's profile image URL
 
                     if (attendance != null) {
                         return new AttendanceResponse(
                                 attendance.getId(),
                                 session.getKlass().getId(),
+                                imageUrl,
                                 student.getId(),
+
                                 sessionId,
                                 student.getName(),
                                 attendance.getRecordedAt(),
                                 attendance.getStatus()
+
                         );
                     } else if (now.isBefore(sessionEnd)) {
                         return new AttendanceResponse(
                                 null,
                                 session.getKlass().getId(),
+                                imageUrl,
                                 student.getId(),
                                 sessionId,
                                 student.getName(),
                                 null,
                                 AttendanceStatus.PENDING
+
                         );
                     } else {
                         return new AttendanceResponse(
                                 null,
                                 session.getKlass().getId(),
+                                imageUrl,
                                 student.getId(),
                                 sessionId,
                                 student.getName(),
                                 null,
                                 AttendanceStatus.ABSENT
+
                         );
                     }
-                }).toList();
+                })
+                .toList();
 
         return new SessionDetailResponse(
                 session.getId(),

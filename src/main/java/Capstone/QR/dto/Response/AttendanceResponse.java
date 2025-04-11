@@ -14,8 +14,9 @@ import java.util.UUID;
 @NoArgsConstructor
 public class AttendanceResponse {
     private Long id;
-    private Long studentId;
     private Long classId;
+    private String profileImageUrl;
+    private Long studentId;
     private long sessionId;
     private String studentname;
     private LocalDateTime recordedAt;

@@ -18,4 +18,5 @@ public class SessionDetailResponse {
     private boolean canceled;
     private String topic;
     private List<AttendanceResponse> attendance;
+
 }
