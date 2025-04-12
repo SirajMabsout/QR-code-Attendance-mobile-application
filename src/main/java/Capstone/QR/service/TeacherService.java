@@ -314,19 +314,19 @@ public class TeacherService {
         return attendanceRepository.findBySession_IdAndStudent_Id(sessionId, studentId);
     }
 
-    public void editAttendance(Long sessionId, Long attendanceId, AttendanceStatus newStatus, UserDetails userDetails) {
-        Attendance attendance = attendanceRepository.findById(attendanceId)
-                .orElseThrow(() -> new RuntimeException("Attendance not found"));
+    public void editAttendanceByStudent(Long sessionId, Long studentId, AttendanceStatus newStatus, UserDetails userDetails) {
+        ClassSession session = classSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
 
-        if (!attendance.getSession().getId().equals(sessionId)) {
-            throw new RuntimeException("Attendance does not belong to this session");
-        }
+        validateTeacherOwnsClass(session.getKlass().getId(), userDetails);
 
-        validateTeacherOwnsClass(attendance.getSession().getKlass().getId(), userDetails);
+        Attendance attendance = attendanceRepository.findBySessionIdAndStudentId(sessionId, studentId)
+                .orElseThrow(() -> new RuntimeException("Attendance not found for student in this session"));
 
         attendance.setStatus(newStatus);
         attendanceRepository.save(attendance);
     }
+
 
     // ========== ATTENDANCE REQUESTS ==========
 

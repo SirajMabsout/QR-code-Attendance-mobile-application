@@ -103,14 +103,15 @@ public class TeacherController {
         return ResponseEntity.ok(new ApiResponse<>("Attendance list fetched", responses));
     }
 
-    @PutMapping("/session/{sessionId}/attendance/{attendanceId}")
+    @PutMapping("/session/{sessionId}/student/{studentId}/attendance")
     public ResponseEntity<ApiResponse<String>> editAttendance(@PathVariable Long sessionId,
-                                                              @PathVariable Long attendanceId,
+                                                              @PathVariable Long studentId,
                                                               @RequestBody AttendanceUpdateRequest request,
                                                               @AuthenticationPrincipal UserDetails userDetails) {
-        teacherService.editAttendance(sessionId, attendanceId, request.getStatus(), userDetails);
+        teacherService.editAttendanceByStudent(sessionId, studentId, request.getStatus(), userDetails);
         return ResponseEntity.ok(new ApiResponse<>("Attendance updated", null));
     }
+
 
 
     @PostMapping("/session/{sessionId}/approve-request/{requestId}")
