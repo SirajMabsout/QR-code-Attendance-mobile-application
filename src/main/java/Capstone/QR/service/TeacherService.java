@@ -386,6 +386,7 @@ public class TeacherService {
                             request.getId(),
                             student.getId(),
                             student.getName(),
+                            student.getEmail(),                      // ✅ add this
                             student.getProfileImageUrl(),
                             session.getKlass().getId(),
                             request.getRequestedAt(),
@@ -393,6 +394,7 @@ public class TeacherService {
                     );
                 }).collect(Collectors.toList());
     }
+
 
     // ========== STUDENT JOIN REQUESTS ==========
 
