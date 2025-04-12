@@ -112,7 +112,8 @@ public class TeacherService {
                 .map(ks -> new StudentResponse(
                         ks.getStudent().getId(),
                         ks.getStudent().getName(),
-                        ks.getStudent().getEmail()))
+                        ks.getStudent().getEmail(), ks.getStudent().getProfileImageUrl())
+                        )
                 .toList();
 
         LocalDate today = LocalDate.now();
@@ -420,10 +421,16 @@ public class TeacherService {
         return klassStudentRepository.findAllByKlassIdAndApprovedFalse(classId).stream()
                 .map(ks -> {
                     Student s = ks.getStudent();
-                    return new StudentResponse(s.getId(), s.getName(), s.getEmail());
+                    return new StudentResponse(
+                            s.getId(),
+                            s.getName(),
+                            s.getEmail(),
+                            s.getProfileImageUrl() // Assuming your Student entity has this method
+                    );
                 })
                 .collect(Collectors.toList());
     }
+
 
     // ========== HELPERS ==========
 
