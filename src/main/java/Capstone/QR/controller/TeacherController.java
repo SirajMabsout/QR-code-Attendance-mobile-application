@@ -130,12 +130,14 @@ public class TeacherController {
     }
 
     @GetMapping("/session/{sessionId}/pending-requests")
-    public ResponseEntity<ApiResponse<List<AttendanceRequestResponse>>> getPendingSessionRequests(@PathVariable Long sessionId,
-                                                                                                  @AuthenticationPrincipal UserDetails userDetails) {
-        List<AttendanceRequestResponse> list = teacherService.getPendingSessionRequests(sessionId, userDetails)
-                .stream().map(this::mapToAttendanceRequestResponse).collect(Collectors.toList());
+    public ResponseEntity<ApiResponse<List<AttendanceRequestResponse>>> getPendingSessionRequests(
+            @PathVariable Long sessionId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        List<AttendanceRequestResponse> list = teacherService.getPendingSessionRequests(sessionId, userDetails);
         return ResponseEntity.ok(new ApiResponse<>("Pending attendance requests fetched", list));
     }
+
 
     @GetMapping("/export-attendance-excel/{classId}")
     public ResponseEntity<byte[]> exportAttendanceExcel(@PathVariable Long classId) {

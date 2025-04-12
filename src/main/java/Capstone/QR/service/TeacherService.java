@@ -370,13 +370,27 @@ public class TeacherService {
         attendanceRequestRepository.save(request);
     }
 
-    public List<AttendanceRequest> getPendingSessionRequests(Long sessionId, UserDetails userDetails) {
+    public List<AttendanceRequestResponse> getPendingSessionRequests(Long sessionId, UserDetails userDetails) {
         ClassSession session = classSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found"));
 
         validateTeacherOwnsClass(session.getKlass().getId(), userDetails);
 
-        return attendanceRequestRepository.findBySessionIdAndStatus(sessionId, RequestStatus.PENDING);
+        List<AttendanceRequest> requests = attendanceRequestRepository.findBySessionIdAndStatus(sessionId, RequestStatus.PENDING);
+
+        return requests.stream()
+                .map(request -> {
+                    Student student = request.getStudent();
+                    return new AttendanceRequestResponse(
+                            request.getId(),
+                            student.getId(),
+                            student.getName(),
+                            student.getProfileImageUrl(),
+                            session.getKlass().getId(),
+                            request.getRequestedAt(),
+                            request.getStatus()
+                    );
+                }).collect(Collectors.toList());
     }
 
     // ========== STUDENT JOIN REQUESTS ==========
