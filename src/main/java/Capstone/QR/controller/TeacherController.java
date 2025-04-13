@@ -48,6 +48,15 @@ public class TeacherController {
         return ResponseEntity.ok(new ApiResponse<>("Class details fetched", details));
     }
 
+    @GetMapping("/class/{classId}/attendance-summary")
+    public ResponseEntity<List<StudentClassAttendanceSummaryResponse>> getClassAttendanceSummary(
+            @PathVariable Long classId
+    ) {
+        List<StudentClassAttendanceSummaryResponse> summary = teacherService.getClassAttendanceSummary(classId);
+        return ResponseEntity.ok(summary);
+    }
+
+
     @GetMapping("/session/{sessionId}")
     public ResponseEntity<ApiResponse<SessionDetailResponse>> getSessionDetails(@PathVariable Long sessionId,
                                                                                 @AuthenticationPrincipal UserDetails userDetails) {

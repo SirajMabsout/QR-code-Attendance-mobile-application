@@ -15,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -445,6 +446,45 @@ public class TeacherService {
         }
         return klass;
     }
+
+    public List<StudentClassAttendanceSummaryResponse> getClassAttendanceSummary(Long classId) {
+        Klass klass = klassRepository.findById(classId)
+                .orElseThrow(() -> new RuntimeException("Class not found"));
+
+        List<ClassSession> sessions = classSessionRepository.findByKlass_Id(classId);
+        int totalSessions = (int) sessions.stream()
+                .filter(session -> !session.getSessionDate().isAfter(LocalDate.now()))
+                .count();
+
+        List<Student> students = klassStudentRepository.findApprovedStudentsByClassId(classId);
+
+        List<StudentClassAttendanceSummaryResponse> summaries = new ArrayList<>();
+
+        for (Student student : students) {
+            List<Attendance> attendanceRecords = attendanceRepository.findBySession_Klass_IdAndStudent_Id(classId,student.getId());
+
+            int present = (int) attendanceRecords.stream().filter(a -> a.getStatus().equals("PRESENT")).count();
+            int excused = (int) attendanceRecords.stream().filter(a -> a.getStatus().equals("EXCUSED")).count();
+            int absent = (int) attendanceRecords.stream().filter(a -> a.getStatus().equals("ABSENT")).count();
+
+            int remaining = klass.getMaxAbsencesAllowed() - absent;
+
+            StudentClassAttendanceSummaryResponse dto = new StudentClassAttendanceSummaryResponse();
+            dto.setStudentId(student.getId());
+            dto.setStudentName(student.getName());
+            dto.setTotalSessions(totalSessions);
+            dto.setPresentCount(present);
+            dto.setExcusedCount(excused);
+            dto.setAbsentCount(absent);
+            dto.setMaxAllowedAbsences(klass.getMaxAbsencesAllowed());
+            dto.setRemainingAbsences(Math.max(0, remaining));
+
+            summaries.add(dto);
+        }
+
+        return summaries;
+    }
+
 
     private ClassResponse mapToClassResponse(Klass klass) {
 

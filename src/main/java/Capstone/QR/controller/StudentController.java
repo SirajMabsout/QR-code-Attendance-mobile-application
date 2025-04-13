@@ -4,6 +4,7 @@ import Capstone.QR.dto.Request.ScanQrRequest;
 import Capstone.QR.dto.Response.ApiResponse;
 import Capstone.QR.dto.Response.AttendanceResponse;
 import Capstone.QR.dto.Response.ClassResponse;
+import Capstone.QR.dto.Response.StudentAttendanceSummaryResponse;
 import Capstone.QR.model.Attendance;
 import Capstone.QR.model.Klass;
 import Capstone.QR.service.StudentService;
@@ -59,37 +60,19 @@ public class StudentController {
     }
 
     @GetMapping("/attendance/{classId}")
-    public ResponseEntity<ApiResponse<List<AttendanceResponse>>> getMyAttendance(@PathVariable Long classId,
-                                                                                 @AuthenticationPrincipal UserDetails userDetails) {
-        List<AttendanceResponse> list = studentService.getMyAttendance(classId, userDetails)
-                .stream()
-                .map(this::mapToAttendanceResponse)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(new ApiResponse<>("Attendance fetched", list));
+    public ResponseEntity<ApiResponse<StudentAttendanceSummaryResponse>> getMyAttendanceSummary(
+            @PathVariable Long classId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        StudentAttendanceSummaryResponse summary = studentService.getMyAttendanceSummary(classId, userDetails);
+        return ResponseEntity.ok(new ApiResponse<>("Attendance summary fetched", summary));
     }
 
-    @GetMapping("/attendance-summary")
-    public ResponseEntity<ApiResponse<List<AttendanceResponse>>> getAttendanceSummary(@AuthenticationPrincipal UserDetails userDetails) {
-        List<AttendanceResponse> list = studentService.getAttendanceSummary(userDetails)
-                .stream()
-                .map(this::mapToAttendanceResponse)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(new ApiResponse<>("Attendance summary fetched", list));
-    }
 
-    @GetMapping("/absences/{classId}")
-    public ResponseEntity<ApiResponse<Long>> countAbsences(@PathVariable Long classId,
-                                                           @AuthenticationPrincipal UserDetails userDetails) {
-        long count = studentService.countAbsences(classId, userDetails);
-        return ResponseEntity.ok(new ApiResponse<>("Absences counted", count));
-    }
 
-    @GetMapping("/attendance-percentage/{classId}")
-    public ResponseEntity<ApiResponse<Double>> getAttendancePercentage(@PathVariable Long classId,
-                                                                       @AuthenticationPrincipal UserDetails userDetails) {
-        double percentage = studentService.getAttendancePercentage(classId, userDetails);
-        return ResponseEntity.ok(new ApiResponse<>("Attendance percentage calculated", percentage));
-    }
+
+
+
 
     @GetMapping("/pending-join-requests")
     public ResponseEntity<ApiResponse<Object>> getPendingJoinRequests(@AuthenticationPrincipal UserDetails userDetails) {

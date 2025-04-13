@@ -11,7 +11,9 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -132,70 +134,67 @@ public class StudentService {
         throw new RuntimeException("You're too far and not on LAU network. Attendance denied.");
     }
 
-    public List<Attendance> getMyAttendance(Long classId, UserDetails userDetails) {
+    public StudentAttendanceSummaryResponse getMyAttendanceSummary(Long classId, UserDetails userDetails) {
         Student student = studentRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Student not found"));
-        return attendanceRepository.findBySession_Klass_IdAndStudent_Id(classId, student.getId());
-    }
 
-    public List<Attendance> getAttendanceSummary(UserDetails userDetails) {
-        Student student = studentRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("Student not found"));
-        return attendanceRepository.findAll()
+        List<ClassSession> sessions = classSessionRepository.findByKlass_Id(classId)
                 .stream()
-                .filter(a -> a.getStudent().equals(student))
-                .toList();
+                .filter(s -> !s.getSessionDate().isAfter(LocalDate.now()))
+                .collect(Collectors.toList());
+
+        List<Attendance> attendanceList = attendanceRepository.findBySession_Klass_IdAndStudent_Id(classId, student.getId());
+
+        Map<Long, String> attendanceMap = attendanceList.stream()
+                .collect(Collectors.toMap(
+                        a -> a.getSession().getId(),
+                        a -> a.getStatus().toString()
+                ));
+
+        List<StudentAttendanceSummaryResponse.SessionStatus> sessionStatuses = new ArrayList<>();
+        int present = 0, excused = 0, absent = 0;
+
+        for (ClassSession session : sessions) {
+            String status = attendanceMap.getOrDefault(session.getId(), "ABSENT");
+
+            if (status.equalsIgnoreCase("PRESENT")) present++;
+            else if (status.equalsIgnoreCase("EXCUSED")) excused++;
+            else absent++;
+
+            sessionStatuses.add(new StudentAttendanceSummaryResponse.SessionStatus(
+                    session.getSessionDate(),
+                    status
+            ));
+        }
+
+        Klass klass = klassRepository.findById(classId)
+                .orElseThrow(() -> new RuntimeException("Class not found"));
+
+        int allowedAbsences = klass.getMaxAbsencesAllowed();
+        int remaining = allowedAbsences - absent;
+        if (remaining < 0) remaining = 0;
+
+        int total = sessions.size();
+        double percentage = total == 0 ? 0 : (present * 100.0 / total);
+
+        return new StudentAttendanceSummaryResponse(
+                sessionStatuses,
+                klass.getMaxAbsencesAllowed(),
+                total,
+                present,
+                excused,
+                absent,
+                remaining,
+                percentage
+        );
     }
 
-    public long countAbsences(Long classId, UserDetails userDetails) {
-        Student student = studentRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("Student not found"));
 
-        LocalDate today = LocalDate.now();
-        List<ClassSession> sessions = classSessionRepository.findByKlass_Id(classId).stream()
-                .filter(s -> !s.isCanceled())
-                .filter(session ->
-                        session.getSessionDate().isBefore(today) ||
-                                (session.getSessionDate().isEqual(today) &&
-                                        session.getSessionTime().isBefore(LocalTime.now()))
-                )
-                .toList();
 
-        List<Attendance> records = attendanceRepository.findBySession_Klass_IdAndStudent_Id(classId, student.getId());
 
-        long presentOrExcused = records.stream()
-                .filter(a -> (a.getStatus() == AttendanceStatus.PRESENT || a.getStatus() == AttendanceStatus.EXCUSED) &&
-                        sessions.stream().anyMatch(s -> s.getId().equals(a.getSession().getId())))
-                .count();
 
-        return sessions.size() - presentOrExcused;
-    }
 
-    public double getAttendancePercentage(Long classId, UserDetails userDetails) {
-        Student student = studentRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("Student not found"));
 
-        LocalDate today = LocalDate.now();
-        List<ClassSession> sessions = classSessionRepository.findByKlass_Id(classId).stream()
-                .filter(s -> !s.isCanceled())
-                .filter(session ->
-                        session.getSessionDate().isBefore(today) ||
-                                (session.getSessionDate().isEqual(today) &&
-                                        session.getSessionTime().isBefore(LocalTime.now()))
-                )
-                .toList();
-
-        if (sessions.isEmpty()) return 0.0;
-
-        List<Attendance> records = attendanceRepository.findBySession_Klass_IdAndStudent_Id(classId, student.getId());
-
-        long presentCount = records.stream()
-                .filter(a -> a.getStatus() == AttendanceStatus.PRESENT &&
-                        sessions.stream().anyMatch(s -> s.getId().equals(a.getSession().getId())))
-                .count();
-
-        return (presentCount * 100.0) / sessions.size();
-    }
 
 
     public List<PendingJoinRequestResponse> getPendingJoinRequests(UserDetails userDetails) {
