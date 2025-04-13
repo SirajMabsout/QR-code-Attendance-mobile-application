@@ -13,6 +13,7 @@ public class StudentClassAttendanceSummaryResponse {
     private int absentCount;
     private int maxAllowedAbsences;
     private int remainingAbsences;
+    private String profileImageUrl;
 
     // Getters and setters
 }

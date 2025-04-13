@@ -11,4 +11,6 @@ import java.util.UUID;
 @Repository
 public interface QRCodeRepository extends JpaRepository<QRCode, Long> {
     Optional<QRCode> findByQrCodeData(String qrCodeData);
+    Optional<QRCode> findBySessionId(Long sessionId);
+
 }

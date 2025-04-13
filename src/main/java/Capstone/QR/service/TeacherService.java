@@ -204,8 +204,11 @@ public class TeacherService {
         String qrText = UUID.randomUUID().toString();
         String qrBase64 = generateQrCodeImage(qrText);
 
-        QRCode qrCode = new QRCode();
-        qrCode.setSession(session);
+        // ✅ Check if QR already exists for the session
+        QRCode qrCode = qrCodeRepository.findBySessionId(sessionId)
+                .orElse(new QRCode());
+
+        qrCode.setSession(session); // safe even if already set
         qrCode.setSessionDate(session.getSessionDate().atTime(session.getSessionTime()));
         qrCode.setExpiresAt(session.getSessionDate().atTime(session.getSessionTime()).plusMinutes(10));
         qrCode.setQrCodeData(qrBase64);
@@ -214,6 +217,7 @@ public class TeacherService {
 
         return qrCodeRepository.save(qrCode);
     }
+
 
     // ========== SESSION DETAILS ==========
 
@@ -478,6 +482,7 @@ public class TeacherService {
             dto.setAbsentCount(absent);
             dto.setMaxAllowedAbsences(klass.getMaxAbsencesAllowed());
             dto.setRemainingAbsences(Math.max(0, remaining));
+            dto.setProfileImageUrl(student.getProfileImageUrl());
 
             summaries.add(dto);
         }
