@@ -467,9 +467,10 @@ public class TeacherService {
         for (Student student : students) {
             List<Attendance> attendanceRecords = attendanceRepository.findBySession_Klass_IdAndStudent_Id(classId,student.getId());
 
-            int present = (int) attendanceRecords.stream().filter(a -> a.getStatus().equals("PRESENT")).count();
-            int excused = (int) attendanceRecords.stream().filter(a -> a.getStatus().equals("EXCUSED")).count();
-            int absent = (int) attendanceRecords.stream().filter(a -> a.getStatus().equals("ABSENT")).count();
+            int present = (int) attendanceRecords.stream().filter((a -> a.getStatus() == AttendanceStatus.PRESENT)).count();
+            int excused = (int) attendanceRecords.stream().filter((a -> a.getStatus() == AttendanceStatus.EXCUSED)).count();
+            int absent = (int) attendanceRecords.stream().filter((a -> a.getStatus() == AttendanceStatus.ABSENT)).count();
+
 
             int remaining = klass.getMaxAbsencesAllowed() - absent;
 
