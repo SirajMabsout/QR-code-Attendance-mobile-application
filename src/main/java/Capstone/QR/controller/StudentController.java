@@ -127,6 +127,7 @@ public class StudentController {
         dto.setJoinCode(klass.getJoinCode());
         dto.setStartDate(klass.getStartDate());
         dto.setEndDate(klass.getEndDate());
+        dto.setDurationMinutes(klass.getDurationMinutes());
         dto.setScheduledDays(klass.getScheduledDays());
         dto.setAcceptanceRadiusMeters(klass.getAcceptanceRadiusMeters());
         return dto;
