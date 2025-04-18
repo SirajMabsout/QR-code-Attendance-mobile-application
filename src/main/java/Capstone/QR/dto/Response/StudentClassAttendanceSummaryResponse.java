@@ -7,6 +7,7 @@ import lombok.Data;
 public class StudentClassAttendanceSummaryResponse {
     private Long studentId;
     private String studentName;
+    private String studentEmail;
     private int totalSessions;
     private int presentCount;
     private int excusedCount;

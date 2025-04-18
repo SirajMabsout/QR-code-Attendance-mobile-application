@@ -210,7 +210,7 @@ public class TeacherService {
 
         qrCode.setSession(session); // safe even if already set
         qrCode.setSessionDate(session.getSessionDate().atTime(session.getSessionTime()));
-        qrCode.setExpiresAt(session.getSessionDate().atTime(session.getSessionTime()).plusMinutes(10));
+        qrCode.setExpiresAt(LocalDateTime.now().plusMinutes(10));
         qrCode.setQrCodeData(qrBase64);
         qrCode.setLatitude(latitude);
         qrCode.setLongitude(longitude);
@@ -477,6 +477,7 @@ public class TeacherService {
             StudentClassAttendanceSummaryResponse dto = new StudentClassAttendanceSummaryResponse();
             dto.setStudentId(student.getId());
             dto.setStudentName(student.getName());
+            dto.setStudentEmail(student.getEmail());
             dto.setTotalSessions(totalSessions);
             dto.setPresentCount(present);
             dto.setExcusedCount(excused);
