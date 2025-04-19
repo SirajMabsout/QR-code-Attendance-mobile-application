@@ -83,6 +83,7 @@ public class TeacherService {
         klass.setJoinCode(CodeGeneratorUtil.generateJoinCode());
         klass.setAcceptanceRadiusMeters(request.getAcceptanceRadiusMeters());
         klass.setDurationMinutes(request.getDurationMinutes()); // ✅ Set class duration
+        klass.setAllowedWifiSSIDs(request.getAllowedWifiSSIDs());
 
         // ✅ Generate and set sessions
         List<ClassSession> sessions = GenerateSessions.generateSessionsForClass(klass);

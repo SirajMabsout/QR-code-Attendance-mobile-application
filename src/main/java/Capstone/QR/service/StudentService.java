@@ -88,9 +88,6 @@ public class StudentService {
             throw new RuntimeException("Student not registered or not approved for this class");
         }
 
-
-
-
         LocalDate today = LocalDate.now();
         boolean alreadyMarked = attendanceRepository
                 .findBySession_IdAndStudent_Id(session.getId(), student.getId())
@@ -104,6 +101,14 @@ public class StudentService {
         double distance = DistanceCalc.calculateDistance(qrCode.getLatitude(), qrCode.getLongitude(), studentLat, studentLng);
         double allowedDistance = klass.getAcceptanceRadiusMeters();
 
+        // ✅ Convert allowed SSIDs to lowercase for case-insensitive comparison
+        List<String> allowedSSIDs = klass.getAllowedWifiSSIDs()
+                .stream()
+                .map(String::toLowerCase)
+                .toList();
+
+        boolean onAllowedNetwork = allowedSSIDs.contains(networkName);
+
         if (distance <= allowedDistance) {
             Attendance attendance = new Attendance();
             attendance.setSession(session);
@@ -111,16 +116,18 @@ public class StudentService {
             attendance.setRecordedAt(LocalDateTime.now());
             attendance.setStatus(AttendanceStatus.PRESENT);
             attendanceRepository.save(attendance);
+
             attendanceRequestRepository.findByStudentIdAndSessionId(student.getId(), session.getId())
                     .ifPresent(request -> {
                         if (request.getStatus() == RequestStatus.PENDING) {
                             attendanceRequestRepository.delete(request);
                         }
                     });
+
             return "Attendance marked successfully.";
         }
 
-        if (networkName.equalsIgnoreCase("LAU") || networkName.equalsIgnoreCase("LAU Students")) {
+        if (onAllowedNetwork) {
             AttendanceRequest request = new AttendanceRequest();
             request.setStudent(student);
             request.setSession(session);
@@ -128,10 +135,13 @@ public class StudentService {
             request.setStatus(RequestStatus.PENDING);
             attendanceRequestRepository.save(request);
 
-            throw new RuntimeException("You're not near the class but on university network. Attendance request sent for approval.");
+            throw new RuntimeException("You're not near the class but connected to an approved Wi-Fi network.");
         }
 
-        throw new RuntimeException("You're too far and not on LAU network. Attendance denied.");
+        throw new RuntimeException(
+                "You're too far and connected to an unapproved network: " + networkName +
+                        ". Approved networks for this class are: " + String.join(", ", klass.getAllowedWifiSSIDs())
+        );
     }
 
     public StudentAttendanceSummaryResponse getMyAttendanceSummary(Long classId, UserDetails userDetails) {

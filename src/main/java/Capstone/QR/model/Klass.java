@@ -62,7 +62,10 @@ public class Klass {
     @Column(nullable = false)
     private double acceptanceRadiusMeters = 5.0;
 
-
+    @ElementCollection
+    @CollectionTable(name = "klass_allowed_wifi", joinColumns = @JoinColumn(name = "klass_id"))
+    @Column(name = "ssid")
+    private List<String> allowedWifiSSIDs;
 
 
 }

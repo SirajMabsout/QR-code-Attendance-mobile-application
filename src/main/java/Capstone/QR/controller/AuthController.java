@@ -115,7 +115,7 @@ public class AuthController {
             response.addHeader("Set-Cookie", accessCookie.toString());
             response.addHeader("Set-Cookie", refreshCookie.toString());
 
-            LoginResponse loginResponse = new LoginResponse("Login was successful", user.getRole().name());
+            LoginResponse loginResponse = new LoginResponse("Login was successful", user.getRole().name(), user.getName(), user.getId());
             return ResponseEntity.ok(new ApiResponse<>("Login was successful", loginResponse));
 
         } catch (AuthenticationException e) {
