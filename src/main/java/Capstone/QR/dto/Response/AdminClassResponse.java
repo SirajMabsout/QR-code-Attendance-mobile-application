@@ -10,5 +10,6 @@ public class AdminClassResponse {
     private Long id;
     private String name;
     private String teacherEmail;
+    private String teacherName;
     private boolean isFinished;
 }

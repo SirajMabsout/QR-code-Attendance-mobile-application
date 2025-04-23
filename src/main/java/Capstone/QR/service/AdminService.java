@@ -80,6 +80,7 @@ public class AdminService {
                     klass.getId(),
                     klass.getName(),
                     teacherEmail,
+                    klass.getTeacher().getName(),
                     isFinished
             );
         }).toList();
