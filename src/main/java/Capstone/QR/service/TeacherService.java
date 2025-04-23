@@ -509,7 +509,8 @@ public class TeacherService {
                 klass.getEndDate(),
                 klass.getDurationMinutes(),
                 klass.getScheduledDays(),
-                klass.getAcceptanceRadiusMeters()
+                klass.getAcceptanceRadiusMeters(),
+                klass.getJoinCode()
                 // ✅ Include in response
         );
     }

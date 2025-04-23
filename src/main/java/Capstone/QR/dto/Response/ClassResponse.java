@@ -24,6 +24,7 @@ public class ClassResponse {
     private int durationMinutes;
     private List<DayOfWeek> scheduledDays;
     private double acceptanceRadiusMeters;
+    private String JoinCode;
 
 
 
