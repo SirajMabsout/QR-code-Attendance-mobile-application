@@ -63,7 +63,8 @@ public class AdminService {
                 .map(ks -> new StudentInClassResponse(
                         ks.getStudent().getId(),
                         ks.getStudent().getName(),
-                        ks.getStudent().getEmail()))
+                        ks.getStudent().getEmail(),
+                        ks.getStudent().getProfileImageUrl()))
                 .collect(Collectors.toList());
     }
 
