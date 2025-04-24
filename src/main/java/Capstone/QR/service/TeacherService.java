@@ -466,6 +466,16 @@ public class TeacherService {
         if (req.getCanceled() != null) {
             session.setCanceled(req.getCanceled());
         }
+        if (Boolean.TRUE.equals(req.getCanceled())) {
+            List<Attendance> attendances = attendanceRepository.findBySession_Id(session.getId());
+
+            for (Attendance a : attendances) {
+                a.setStatus(AttendanceStatus.EXCUSED);
+            }
+
+            attendanceRepository.saveAll(attendances);
+        }
+
 
         // Update topic
         if (req.getTopic() != null) {
