@@ -1,6 +1,7 @@
 package Capstone.QR.service;
 
 import Capstone.QR.dto.Request.CreateClassRequest;
+import Capstone.QR.dto.Request.UpdateSessionRequest;
 import Capstone.QR.dto.Response.*;
 import Capstone.QR.model.*;
 import Capstone.QR.repository.*;
@@ -451,6 +452,29 @@ public class TeacherService {
         }
         return klass;
     }
+
+    public void updateClassSession(UpdateSessionRequest request, UserDetails userDetails) {
+        ClassSession session = classSessionRepository.findById(request.getSessionId())
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+
+        validateTeacherOwnsClass(session.getKlass().getId(), userDetails); // Optional for security
+
+        if (request.getCanceled() != null) {
+            session.setCanceled(request.getCanceled());
+        }
+        if (request.getSessionDate() != null) {
+            session.setSessionDate(request.getSessionDate());
+        }
+        if (request.getSessionTime() != null) {
+            session.setSessionTime(request.getSessionTime());
+        }
+        if (request.getTopic() != null) {
+            session.setTopic(request.getTopic());
+        }
+
+        classSessionRepository.save(session);
+    }
+
 
     public List<StudentClassAttendanceSummaryResponse> getClassAttendanceSummary(Long classId) {
         Klass klass = klassRepository.findById(classId)

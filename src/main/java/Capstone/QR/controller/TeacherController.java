@@ -3,6 +3,7 @@ package Capstone.QR.controller;
 import Capstone.QR.dto.Request.AttendanceUpdateRequest;
 import Capstone.QR.dto.Request.CreateClassRequest;
 import Capstone.QR.dto.Request.GenerateQrRequest;
+import Capstone.QR.dto.Request.UpdateSessionRequest;
 import Capstone.QR.dto.Response.*;
 import Capstone.QR.model.*;
 import Capstone.QR.service.AttendanceExportService;
@@ -40,6 +41,15 @@ public class TeacherController {
         List<ClassResponse> classes = teacherService.getAllClasses(userDetails);
         return ResponseEntity.ok(new ApiResponse<>("Classes fetched successfully", classes));
     }
+
+    @PutMapping("/teacher/session/update")
+    public ResponseEntity<ApiResponse<String>> updateSession(
+            @RequestBody @Valid UpdateSessionRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        teacherService.updateClassSession(request, userDetails);
+        return ResponseEntity.ok(new ApiResponse<>("Session updated successfully",null));
+    }
+
 
     @GetMapping("/class/{classId}")
     public ResponseEntity<ApiResponse<ClassDetailResponse>> getClassDetails(@PathVariable Long classId,
