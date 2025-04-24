@@ -465,8 +465,8 @@ public class TeacherService {
         // Update canceled flag
         if (req.getCanceled() != null) {
             session.setCanceled(req.getCanceled());
-        }
-        if (Boolean.TRUE.equals(req.getCanceled())) {
+
+
             List<Attendance> attendances = attendanceRepository.findBySession_Id(session.getId());
 
             for (Attendance a : attendances) {
@@ -478,9 +478,8 @@ public class TeacherService {
 
 
         // Update topic
-        if (req.getTopic() != null) {
+        else if (req.getTopic() != null) {
             session.setTopic(req.getTopic());
-        }
 
         // If changing time/date, check for teacher + student conflicts
         if (req.getSessionDate() != null && req.getSessionTime() != null) {
@@ -531,7 +530,7 @@ public class TeacherService {
 
             session.setSessionDate(req.getSessionDate());
             session.setSessionTime(req.getSessionTime());
-        }
+        }}
 
         classSessionRepository.save(session);
     }
