@@ -7,6 +7,7 @@ import Capstone.QR.model.*;
 import Capstone.QR.repository.*;
 import Capstone.QR.utils.CodeGeneratorUtil;
 import Capstone.QR.utils.GenerateSessions;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -453,23 +454,73 @@ public class TeacherService {
         return klass;
     }
 
-    public void updateClassSession(UpdateSessionRequest request, UserDetails userDetails) {
-        ClassSession session = classSessionRepository.findById(request.getSessionId())
+    @Transactional
+    public void updateClassSession(UpdateSessionRequest req, UserDetails userDetails) {
+        ClassSession session = classSessionRepository.findById(req.getSessionId())
                 .orElseThrow(() -> new RuntimeException("Session not found"));
 
-        validateTeacherOwnsClass(session.getKlass().getId(), userDetails); // Optional for security
+        Klass klass = session.getKlass();
+        validateTeacherOwnsClass(klass.getId(), userDetails);
 
-        if (request.getCanceled() != null) {
-            session.setCanceled(request.getCanceled());
+        // Update canceled flag
+        if (req.getCanceled() != null) {
+            session.setCanceled(req.getCanceled());
         }
-        if (request.getSessionDate() != null) {
-            session.setSessionDate(request.getSessionDate());
+
+        // Update topic
+        if (req.getTopic() != null) {
+            session.setTopic(req.getTopic());
         }
-        if (request.getSessionTime() != null) {
-            session.setSessionTime(request.getSessionTime());
-        }
-        if (request.getTopic() != null) {
-            session.setTopic(request.getTopic());
+
+        // If changing time/date, check for teacher + student conflicts
+        if (req.getSessionDate() != null && req.getSessionTime() != null) {
+            LocalDateTime newStart = req.getSessionDate().atTime(req.getSessionTime());
+            LocalDateTime newEnd = newStart.plusMinutes(klass.getDurationMinutes());
+
+            // ✅ Check teacher session conflict
+            Long teacherId = klass.getTeacher().getId();
+            List<ClassSession> teacherSessions = classSessionRepository.findAllByTeacherIdAndDate(
+                    teacherId, req.getSessionDate());
+
+            for (ClassSession s : teacherSessions) {
+                if (s.getId().equals(session.getId())) continue;
+
+                LocalDateTime existingStart = s.getSessionDate().atTime(s.getSessionTime());
+                LocalDateTime existingEnd = existingStart.plusMinutes(s.getKlass().getDurationMinutes());
+
+                boolean conflict = !(newEnd.isBefore(existingStart) || newStart.isAfter(existingEnd));
+                if (conflict) {
+                    throw new RuntimeException("Conflict with another session you teach on the same day.");
+                }
+            }
+
+            // ✅ Check student schedule conflict
+            List<Student> enrolledStudents = klassStudentRepository.findApprovedStudentsByClassId(klass.getId());
+            for (Student student : enrolledStudents) {
+                List<ClassSession> studentSessions = classSessionRepository.findSessionsByStudentIdAndDate(student.getId(), req.getSessionDate());
+
+                for (ClassSession s : studentSessions) {
+                    if (s.getId().equals(session.getId())) continue;
+
+                    LocalDateTime existingStart = s.getSessionDate().atTime(s.getSessionTime());
+                    LocalDateTime existingEnd = existingStart.plusMinutes(s.getKlass().getDurationMinutes());
+
+                    boolean conflict = !(newEnd.isBefore(existingStart) || newStart.isAfter(existingEnd));
+                    if (conflict) {
+                        String conflictMessage = String.format(
+                                "Conflict for student %s with class '%s' at %s",
+                                student.getName(),
+                                s.getKlass().getName(),
+                                s.getSessionTime()
+                        );
+                        throw new RuntimeException(conflictMessage);
+
+                    }
+                }
+            }
+
+            session.setSessionDate(req.getSessionDate());
+            session.setSessionTime(req.getSessionTime());
         }
 
         classSessionRepository.save(session);
