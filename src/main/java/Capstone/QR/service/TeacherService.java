@@ -462,31 +462,28 @@ public class TeacherService {
         Klass klass = session.getKlass();
         validateTeacherOwnsClass(klass.getId(), userDetails);
 
-        // Update canceled flag
-        if (req.getCanceled() != null) {
-            session.setCanceled(req.getCanceled());
-
+        // ✅ Handle cancelation
+        if (req.getCanceled()) {
+            session.setCanceled(true);
 
             List<Attendance> attendances = attendanceRepository.findBySession_Id(session.getId());
-
             for (Attendance a : attendances) {
                 a.setStatus(AttendanceStatus.EXCUSED);
             }
-
             attendanceRepository.saveAll(attendances);
         }
 
-
-        // Update topic
-        else if (req.getTopic() != null) {
+        // ✅ Update topic
+        if (req.getTopic() != null) {
             session.setTopic(req.getTopic());
+        }
 
-        // If changing time/date, check for teacher + student conflicts
+        // ✅ Update date and time (with conflict checks)
         if (req.getSessionDate() != null && req.getSessionTime() != null) {
             LocalDateTime newStart = req.getSessionDate().atTime(req.getSessionTime());
             LocalDateTime newEnd = newStart.plusMinutes(klass.getDurationMinutes());
 
-            // ✅ Check teacher session conflict
+            // ✅ Check teacher conflicts
             Long teacherId = klass.getTeacher().getId();
             List<ClassSession> teacherSessions = classSessionRepository.findAllByTeacherIdAndDate(
                     teacherId, req.getSessionDate());
@@ -497,25 +494,22 @@ public class TeacherService {
                 LocalDateTime existingStart = s.getSessionDate().atTime(s.getSessionTime());
                 LocalDateTime existingEnd = existingStart.plusMinutes(s.getKlass().getDurationMinutes());
 
-                boolean conflict = !(newEnd.isBefore(existingStart) || newStart.isAfter(existingEnd));
-                if (conflict) {
+                if (!(newEnd.isBefore(existingStart) || newStart.isAfter(existingEnd))) {
                     throw new RuntimeException("Conflict with another session you teach on the same day.");
                 }
             }
 
-            // ✅ Check student schedule conflict
+            // ✅ Check student conflicts
             List<Student> enrolledStudents = klassStudentRepository.findApprovedStudentsByClassId(klass.getId());
             for (Student student : enrolledStudents) {
                 List<ClassSession> studentSessions = classSessionRepository.findSessionsByStudentIdAndDate(student.getId(), req.getSessionDate());
-
                 for (ClassSession s : studentSessions) {
                     if (s.getId().equals(session.getId())) continue;
 
                     LocalDateTime existingStart = s.getSessionDate().atTime(s.getSessionTime());
                     LocalDateTime existingEnd = existingStart.plusMinutes(s.getKlass().getDurationMinutes());
 
-                    boolean conflict = !(newEnd.isBefore(existingStart) || newStart.isAfter(existingEnd));
-                    if (conflict) {
+                    if (!(newEnd.isBefore(existingStart) || newStart.isAfter(existingEnd))) {
                         String conflictMessage = String.format(
                                 "Conflict for student %s with class '%s' at %s",
                                 student.getName(),
@@ -523,14 +517,13 @@ public class TeacherService {
                                 s.getSessionTime()
                         );
                         throw new RuntimeException(conflictMessage);
-
                     }
                 }
             }
 
             session.setSessionDate(req.getSessionDate());
             session.setSessionTime(req.getSessionTime());
-        }}
+        }
 
         classSessionRepository.save(session);
     }
