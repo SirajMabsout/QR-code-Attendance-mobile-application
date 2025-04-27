@@ -2,7 +2,9 @@ package Capstone.QR.repository;
 
 import Capstone.QR.model.KlassStudent;
 import Capstone.QR.model.Student;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -29,5 +31,14 @@ public interface KlassStudentRepository extends JpaRepository<KlassStudent, Long
                   AND ks.approved = true
             """)
     List<Student> findApprovedStudentsByClassId(@Param("classId") Long classId);
+
+
+        @Transactional
+        @Modifying
+        @Query("DELETE FROM KlassStudent ks WHERE ks.klass.id = :klassId")
+        void deleteByKlassId(@Param("klassId") Long klassId);
+
+
+
 
 }

@@ -8,10 +8,8 @@ import Capstone.QR.model.Klass;
 import Capstone.QR.model.KlassStudent;
 import Capstone.QR.model.Teacher;
 import Capstone.QR.model.Student;
-import Capstone.QR.repository.KlassRepository;
-import Capstone.QR.repository.KlassStudentRepository;
-import Capstone.QR.repository.StudentRepository;
-import Capstone.QR.repository.TeacherRepository;
+import Capstone.QR.repository.*;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +25,9 @@ public class AdminService {
     private final TeacherRepository teacherRepository;
     private final KlassRepository klassRepository;
     private final KlassStudentRepository klassStudentRepository;
+    private final QRCodeRepository qrCodeRepository;
+    private final AttendanceRepository attendanceRepository;
+    private final ClassSessionRepository classSessionRepository;
 
     public void approveTeacher(Long teacherId) {
         Teacher teacher = teacherRepository.findById(teacherId)
@@ -41,9 +42,30 @@ public class AdminService {
         teacherRepository.delete(teacher);
     }
 
+    @Transactional
     public void deleteClass(Long classId) {
-        klassRepository.deleteById(classId);
+        Klass klass = klassRepository.findById(classId)
+                .orElseThrow(() -> new RuntimeException("Class not found"));
+
+        // 1. Find all session IDs
+        List<Long> sessionIds = classSessionRepository.findSessionIdsByClassId(classId);
+
+        // 2. Delete attendance linked to sessions
+        if (!sessionIds.isEmpty()) {
+            attendanceRepository.deleteBySessionIds(sessionIds);
+            qrCodeRepository.deleteBySessionIds(sessionIds);
+        }
+
+        // 3. Delete sessions
+        classSessionRepository.deleteByKlassId(classId);
+
+        // 4. Delete student enrollments
+        klassStudentRepository.deleteByKlassId(classId);
+
+        // 5. Delete the class
+        klassRepository.delete(klass);
     }
+
 
     public List<PendingTeacherResponse> getPendingTeachers() {
         return teacherRepository.findByApprovedFalse().stream()
