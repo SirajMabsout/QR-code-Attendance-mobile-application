@@ -88,11 +88,12 @@ public class StudentService {
             throw new RuntimeException("Student not registered or not approved for this class");
         }
 
-        LocalDate today = LocalDate.now();
+        
         boolean alreadyMarked = attendanceRepository
                 .findBySession_IdAndStudent_Id(session.getId(), student.getId())
                 .stream()
-                .anyMatch(a -> a.getRecordedAt().toLocalDate().equals(today));
+                .anyMatch(a -> a.getStatus() != AttendanceStatus.PENDING);
+
 
         if (alreadyMarked) {
             throw new RuntimeException("Attendance already marked for today");
