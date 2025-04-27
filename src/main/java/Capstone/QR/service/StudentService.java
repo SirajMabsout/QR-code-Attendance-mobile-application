@@ -113,7 +113,7 @@ public class StudentService {
             Optional<Attendance> attendanceOpt = attendanceRepository
                     .findBySession_IdAndStudent_Id(session.getId(), student.getId())
                     .stream()
-                    .filter(a -> a.getStatus() == AttendanceStatus.PENDING || a.getStatus() == AttendanceStatus.ABSENT)
+                    .filter(a -> a.getStatus() == AttendanceStatus.PENDING || a.getStatus() == AttendanceStatus.ABSENT|| a.getStatus() == AttendanceStatus.EXCUSED)
                     .findFirst();
 
             if (attendanceOpt.isPresent()) {
@@ -142,6 +142,12 @@ public class StudentService {
 
         // ✅ If on allowed WiFi network
         if (onAllowedNetwork) {
+            AttendanceRequest request = new AttendanceRequest();
+            request.setStudent(student);
+            request.setSession(session);
+            request.setRequestedAt(LocalDateTime.now());
+            request.setStatus(RequestStatus.PENDING);
+            attendanceRequestRepository.save(request);
             Optional<Attendance> attendanceOpt = attendanceRepository
                     .findBySession_IdAndStudent_Id(session.getId(), student.getId())
                     .stream()
@@ -153,22 +159,9 @@ public class StudentService {
                 attendance.setStatus(AttendanceStatus.PENDING);
                 attendance.setRecordedAt(LocalDateTime.now());
                 attendanceRepository.save(attendance);
-                AttendanceRequest request = new AttendanceRequest();
-                request.setStudent(student);
-                request.setSession(session);
-                request.setRequestedAt(LocalDateTime.now());
-                request.setStatus(RequestStatus.PENDING);
-                attendanceRequestRepository.save(request);
-            } else {
-                AttendanceRequest request = new AttendanceRequest();
-                request.setStudent(student);
-                request.setSession(session);
-                request.setRequestedAt(LocalDateTime.now());
-                request.setStatus(RequestStatus.PENDING);
-                attendanceRequestRepository.save(request);
             }
 
-            throw new RuntimeException("You're not near the class but connected to an approved Wi-Fi network./n" +
+            throw new RuntimeException("You're not near the class but connected to an approved Wi-Fi network" +
                     "An Attendance Request will be send to the instructor");
         }
 

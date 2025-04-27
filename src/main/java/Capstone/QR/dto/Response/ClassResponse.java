@@ -3,6 +3,7 @@ package Capstone.QR.dto.Response;
 import Capstone.QR.model.ClassSession;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -11,6 +12,7 @@ import java.util.List;
 
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 
 public class ClassResponse {
     private Long id;
@@ -24,12 +26,9 @@ public class ClassResponse {
     private int durationMinutes;
     private List<DayOfWeek> scheduledDays;
     private double acceptanceRadiusMeters;
-    private String JoinCode;
 
 
 
-    public ClassResponse() {
 
-    }
 
 }
