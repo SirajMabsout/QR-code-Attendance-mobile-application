@@ -4,6 +4,7 @@ package Capstone.QR.service;
 import Capstone.QR.dto.Response.*;
 import Capstone.QR.model.*;
 import Capstone.QR.repository.*;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -69,6 +70,7 @@ public class StudentService {
     }
 
 
+    @Transactional
     public String scanQr(String qrCodeData, double studentLat, double studentLng, String networkName, UserDetails userDetails) {
         Student student = studentRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Student not found"));
@@ -88,32 +90,45 @@ public class StudentService {
             throw new RuntimeException("Student not registered or not approved for this class");
         }
 
-        
-        boolean alreadyMarked = attendanceRepository
+        // Fetch attendance if any exists
+        Optional<Attendance> optionalAttendance = attendanceRepository
                 .findBySession_IdAndStudent_Id(session.getId(), student.getId())
                 .stream()
-                .anyMatch(a -> a.getStatus() != AttendanceStatus.PENDING);
+                .filter(a -> a.getStatus() != AttendanceStatus.PENDING) // Already completed
+                .findFirst();
 
-
-        if (alreadyMarked) {
-            throw new RuntimeException("Attendance already marked for today");
+        if (optionalAttendance.isPresent()) {
+            throw new RuntimeException("Attendance already marked for this session");
         }
 
+        // Distance calculation
         double distance = DistanceCalc.calculateDistance(qrCode.getLatitude(), qrCode.getLongitude(), studentLat, studentLng);
         double allowedDistance = klass.getAcceptanceRadiusMeters();
 
-        // ✅ Convert allowed SSIDs to lowercase for case-insensitive comparison
         List<String> allowedSSIDs = klass.getAllowedWifiSSIDs();
-
         boolean onAllowedNetwork = allowedSSIDs.contains(networkName);
 
+        // ✅ If within distance
         if (distance <= allowedDistance) {
-            Attendance attendance = new Attendance();
-            attendance.setSession(session);
-            attendance.setStudent(student);
-            attendance.setRecordedAt(LocalDateTime.now());
-            attendance.setStatus(AttendanceStatus.PRESENT);
-            attendanceRepository.save(attendance);
+            Optional<Attendance> attendanceOpt = attendanceRepository
+                    .findBySession_IdAndStudent_Id(session.getId(), student.getId())
+                    .stream()
+                    .filter(a -> a.getStatus() == AttendanceStatus.PENDING || a.getStatus() == AttendanceStatus.ABSENT)
+                    .findFirst();
+
+            if (attendanceOpt.isPresent()) {
+                Attendance attendance = attendanceOpt.get();
+                attendance.setStatus(AttendanceStatus.PRESENT);
+                attendance.setRecordedAt(LocalDateTime.now());
+                attendanceRepository.save(attendance);
+            } else {
+                Attendance newAttendance = new Attendance();
+                newAttendance.setSession(session);
+                newAttendance.setStudent(student);
+                newAttendance.setRecordedAt(LocalDateTime.now());
+                newAttendance.setStatus(AttendanceStatus.PRESENT);
+                attendanceRepository.save(newAttendance);
+            }
 
             attendanceRequestRepository.findByStudentIdAndSessionId(student.getId(), session.getId())
                     .ifPresent(request -> {
@@ -125,22 +140,38 @@ public class StudentService {
             return "Attendance marked successfully.";
         }
 
+        // ✅ If on allowed WiFi network
         if (onAllowedNetwork) {
-            AttendanceRequest request = new AttendanceRequest();
-            request.setStudent(student);
-            request.setSession(session);
-            request.setRequestedAt(LocalDateTime.now());
-            request.setStatus(RequestStatus.PENDING);
-            attendanceRequestRepository.save(request);
+            Optional<Attendance> attendanceOpt = attendanceRepository
+                    .findBySession_IdAndStudent_Id(session.getId(), student.getId())
+                    .stream()
+                    .filter(a -> a.getStatus() == AttendanceStatus.ABSENT)
+                    .findFirst();
+
+            if (attendanceOpt.isPresent()) {
+                Attendance attendance = attendanceOpt.get();
+                attendance.setStatus(AttendanceStatus.PENDING);
+                attendance.setRecordedAt(LocalDateTime.now());
+                attendanceRepository.save(attendance);
+            } else {
+                AttendanceRequest request = new AttendanceRequest();
+                request.setStudent(student);
+                request.setSession(session);
+                request.setRequestedAt(LocalDateTime.now());
+                request.setStatus(RequestStatus.PENDING);
+                attendanceRequestRepository.save(request);
+            }
 
             throw new RuntimeException("You're not near the class but connected to an approved Wi-Fi network.");
         }
 
+        // ❌ Neither near nor on allowed network
         throw new RuntimeException(
                 "You're too far and connected to an unapproved network: " + networkName +
-                        ". Approved networks for this class are: " + String.join(", ", klass.getAllowedWifiSSIDs())
+                        ". Approved networks for this class are: " + String.join(", ", allowedSSIDs)
         );
     }
+
 
     public StudentAttendanceSummaryResponse getMyAttendanceSummary(Long classId, UserDetails userDetails) {
         Student student = studentRepository.findByEmail(userDetails.getUsername())
