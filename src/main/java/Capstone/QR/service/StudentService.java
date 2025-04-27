@@ -110,6 +110,12 @@ public class StudentService {
 
         // ✅ If within distance
         if (distance <= allowedDistance) {
+            AttendanceRequest Request = new AttendanceRequest();
+            Request.setStudent(student);
+            Request.setSession(session);
+            Request.setRequestedAt(LocalDateTime.now());
+            Request.setStatus(RequestStatus.PENDING);
+            attendanceRequestRepository.save(Request);
             Optional<Attendance> attendanceOpt = attendanceRepository
                     .findBySession_IdAndStudent_Id(session.getId(), student.getId())
                     .stream()
@@ -161,8 +167,8 @@ public class StudentService {
                 attendanceRepository.save(attendance);
             }
 
-            throw new RuntimeException("You're not near the class but connected to an approved Wi-Fi network" +
-                    "An Attendance Request will be send to the instructor");
+            return "You're not near the class but connected to an approved Wi-Fi network. An Attendance Request has been sent to the instructor.";
+
         }
 
         // ❌ Neither near nor on allowed network
