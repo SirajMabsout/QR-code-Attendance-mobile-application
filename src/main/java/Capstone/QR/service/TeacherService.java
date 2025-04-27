@@ -284,7 +284,7 @@ public class TeacherService {
                         Attendance newPending = new Attendance();
                         newPending.setStudent(student);
                         newPending.setSession(session);
-                        newPending.setRecordedAt(null); // Not yet recorded
+                        newPending.setRecordedAt(LocalDateTime.now());
                         newPending.setStatus(AttendanceStatus.PENDING);
 
                         Attendance savedPending = attendanceRepository.save(newPending);
@@ -296,7 +296,7 @@ public class TeacherService {
                                 student.getId(),
                                 sessionId,
                                 student.getName(),
-                                null,
+                                savedPending.getRecordedAt(),
                                 AttendanceStatus.PENDING
                         );
                     } else {
@@ -304,7 +304,7 @@ public class TeacherService {
                         Attendance newAbsent = new Attendance();
                         newAbsent.setStudent(student);
                         newAbsent.setSession(session);
-                        newAbsent.setRecordedAt(null); // No scan recorded
+                        newAbsent.setRecordedAt(LocalDateTime.now());
                         newAbsent.setStatus(AttendanceStatus.ABSENT);
 
                         Attendance savedAbsent = attendanceRepository.save(newAbsent);
@@ -316,7 +316,7 @@ public class TeacherService {
                                 student.getId(),
                                 sessionId,
                                 student.getName(),
-                                null,
+                                savedAbsent.getRecordedAt(),
                                 AttendanceStatus.ABSENT
                         );
                     }
