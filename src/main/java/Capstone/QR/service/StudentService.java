@@ -103,10 +103,7 @@ public class StudentService {
         double allowedDistance = klass.getAcceptanceRadiusMeters();
 
         // ✅ Convert allowed SSIDs to lowercase for case-insensitive comparison
-        List<String> allowedSSIDs = klass.getAllowedWifiSSIDs()
-                .stream()
-                .map(String::toLowerCase)
-                .toList();
+        List<String> allowedSSIDs = klass.getAllowedWifiSSIDs();
 
         boolean onAllowedNetwork = allowedSSIDs.contains(networkName);
 
