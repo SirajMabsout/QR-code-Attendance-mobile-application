@@ -116,8 +116,9 @@ public class TeacherService {
                 .map(ks -> new StudentResponse(
                         ks.getStudent().getId(),
                         ks.getStudent().getName(),
-                        ks.getStudent().getEmail(), ks.getStudent().getProfileImageUrl())
-                        )
+                        ks.getStudent().getEmail(),
+                        ks.getStudent().getProfileImageUrl())
+                )
                 .toList();
 
         LocalDate today = LocalDate.now();
@@ -141,6 +142,9 @@ public class TeacherService {
                 })
                 .toList();
 
+        // ✅ Check if there is a session today
+        boolean todaySession = sessionResponses.stream()
+                .anyMatch(SessionResponse::isToday);
 
         return new ClassDetailResponse(
                 klass.getId(),
@@ -153,8 +157,10 @@ public class TeacherService {
                 klass.getEndDate(),
                 klass.getDurationMinutes(),
                 klass.getScheduledDays(),
+                todaySession,
                 sessionResponses,
                 enrolledStudents
+                   // ✅ Added here
         );
     }
 

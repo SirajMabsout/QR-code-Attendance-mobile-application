@@ -22,6 +22,7 @@ public class ClassDetailResponse {
     private LocalDate endDate;
     private int durationMinutes;
     private List<DayOfWeek> scheduledDays;
+    private boolean TodaySession;
     private List<SessionResponse> sessions;
     private List<StudentResponse> enrolledStudents;
 
