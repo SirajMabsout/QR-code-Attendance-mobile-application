@@ -153,6 +153,12 @@ public class StudentService {
                 attendance.setStatus(AttendanceStatus.PENDING);
                 attendance.setRecordedAt(LocalDateTime.now());
                 attendanceRepository.save(attendance);
+                AttendanceRequest request = new AttendanceRequest();
+                request.setStudent(student);
+                request.setSession(session);
+                request.setRequestedAt(LocalDateTime.now());
+                request.setStatus(RequestStatus.PENDING);
+                attendanceRequestRepository.save(request);
             } else {
                 AttendanceRequest request = new AttendanceRequest();
                 request.setStudent(student);
@@ -162,7 +168,8 @@ public class StudentService {
                 attendanceRequestRepository.save(request);
             }
 
-            throw new RuntimeException("You're not near the class but connected to an approved Wi-Fi network.");
+            throw new RuntimeException("You're not near the class but connected to an approved Wi-Fi network./n" +
+                    "An Attendance Request will be send to the instructor");
         }
 
         // ❌ Neither near nor on allowed network
