@@ -280,8 +280,17 @@ public class TeacherService {
 
                         );
                     } else if (now.isBefore(sessionEnd)) {
+                        // Student did not scan yet but session is still ongoing → PENDING
+                        Attendance newPending = new Attendance();
+                        newPending.setStudent(student);
+                        newPending.setSession(session);
+                        newPending.setRecordedAt(null); // Not yet recorded
+                        newPending.setStatus(AttendanceStatus.PENDING);
+
+                        Attendance savedPending = attendanceRepository.save(newPending);
+
                         return new AttendanceResponse(
-                                null,
+                                savedPending.getId(),
                                 session.getKlass().getId(),
                                 imageUrl,
                                 student.getId(),
@@ -289,11 +298,19 @@ public class TeacherService {
                                 student.getName(),
                                 null,
                                 AttendanceStatus.PENDING
-
                         );
                     } else {
+                        // Student did not scan and session ended → ABSENT
+                        Attendance newAbsent = new Attendance();
+                        newAbsent.setStudent(student);
+                        newAbsent.setSession(session);
+                        newAbsent.setRecordedAt(null); // No scan recorded
+                        newAbsent.setStatus(AttendanceStatus.ABSENT);
+
+                        Attendance savedAbsent = attendanceRepository.save(newAbsent);
+
                         return new AttendanceResponse(
-                                null,
+                                savedAbsent.getId(),
                                 session.getKlass().getId(),
                                 imageUrl,
                                 student.getId(),
@@ -301,9 +318,9 @@ public class TeacherService {
                                 student.getName(),
                                 null,
                                 AttendanceStatus.ABSENT
-
                         );
                     }
+
                 })
                 .toList();
 

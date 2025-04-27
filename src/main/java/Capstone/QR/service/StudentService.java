@@ -258,6 +258,7 @@ public class StudentService {
                 klass.getEndDate(),
                 klass.getDurationMinutes(),
                 klass.getScheduledDays(),
+                false,
                 sessions,
                 null
         );
