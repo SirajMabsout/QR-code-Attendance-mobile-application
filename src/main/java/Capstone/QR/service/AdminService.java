@@ -28,6 +28,7 @@ public class AdminService {
     private final QRCodeRepository qrCodeRepository;
     private final AttendanceRepository attendanceRepository;
     private final ClassSessionRepository classSessionRepository;
+    private final AttendanceRequestRepository attendanceRequestRepository;
 
     public void approveTeacher(Long teacherId) {
         Teacher teacher = teacherRepository.findById(teacherId)
@@ -50,10 +51,11 @@ public class AdminService {
         // 1. Find all session IDs
         List<Long> sessionIds = classSessionRepository.findSessionIdsByClassId(classId);
 
-        // 2. Delete attendance linked to sessions
+        // 2. Delete attendance, QR codes, and attendance requests linked to sessions
         if (!sessionIds.isEmpty()) {
             attendanceRepository.deleteBySessionIds(sessionIds);
             qrCodeRepository.deleteBySessionIds(sessionIds);
+            attendanceRequestRepository.deleteBySessionIds(sessionIds);
         }
 
         // 3. Delete sessions
@@ -65,6 +67,7 @@ public class AdminService {
         // 5. Delete the class
         klassRepository.delete(klass);
     }
+
 
 
     public List<PendingTeacherResponse> getPendingTeachers() {
