@@ -148,12 +148,25 @@ public class StudentService {
 
         // ✅ If on allowed WiFi network
         if (onAllowedNetwork) {
-            AttendanceRequest request = new AttendanceRequest();
-            request.setStudent(student);
-            request.setSession(session);
-            request.setRequestedAt(LocalDateTime.now());
-            request.setStatus(RequestStatus.PENDING);
-            attendanceRequestRepository.save(request);
+            AttendanceRequest existingRequest = attendanceRequestRepository
+                    .findByStudentIdAndSessionId(student.getId(), session.getId())
+                    .orElse(null);
+
+            if (existingRequest != null && existingRequest.getStatus() == RequestStatus.PENDING) {
+                return "There is already pending attendance request ! Check your instructor.";
+            } else if (existingRequest != null) {
+                existingRequest.setRequestedAt(LocalDateTime.now());
+                existingRequest.setStatus(RequestStatus.PENDING);
+                attendanceRequestRepository.save(existingRequest);
+
+            }else {
+                AttendanceRequest newRequest = new AttendanceRequest();
+                newRequest.setStudent(student);
+                newRequest.setSession(session);
+                newRequest.setRequestedAt(LocalDateTime.now());
+                newRequest.setStatus(RequestStatus.PENDING);
+                attendanceRequestRepository.save(newRequest);}
+
             Optional<Attendance> attendanceOpt = attendanceRepository
                     .findBySession_IdAndStudent_Id(session.getId(), student.getId())
                     .stream()
