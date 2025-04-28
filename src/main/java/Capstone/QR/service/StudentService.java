@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -92,7 +91,7 @@ public class StudentService {
 
         // Fetch attendance if any exists
         Optional<Attendance> optionalAttendance = attendanceRepository
-                .findBySession_IdAndStudent_Id(session.getId(), student.getId())
+                .findAllBySession_IdAndStudent_Id(session.getId(), student.getId())
                 .stream()
                 .filter(a -> a.getStatus() != AttendanceStatus.PENDING) // Already completed
                 .findFirst();
@@ -117,7 +116,7 @@ public class StudentService {
             Request.setStatus(RequestStatus.PENDING);
             attendanceRequestRepository.save(Request);
             Optional<Attendance> attendanceOpt = attendanceRepository
-                    .findBySession_IdAndStudent_Id(session.getId(), student.getId())
+                    .findAllBySession_IdAndStudent_Id(session.getId(), student.getId())
                     .stream()
                     .filter(a -> a.getStatus() == AttendanceStatus.PENDING || a.getStatus() == AttendanceStatus.ABSENT|| a.getStatus() == AttendanceStatus.EXCUSED)
                     .findFirst();
@@ -168,7 +167,7 @@ public class StudentService {
                 attendanceRequestRepository.save(newRequest);}
 
             Optional<Attendance> attendanceOpt = attendanceRepository
-                    .findBySession_IdAndStudent_Id(session.getId(), student.getId())
+                    .findAllBySession_IdAndStudent_Id(session.getId(), student.getId())
                     .stream()
                     .filter(a -> a.getStatus() == AttendanceStatus.ABSENT)
                     .findFirst();

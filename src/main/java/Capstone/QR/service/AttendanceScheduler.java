@@ -48,7 +48,7 @@ public class AttendanceScheduler {
             for (Student student : allApprovedStudents) {
                 if (!presentStudentIds.contains(student.getId())) {
                     boolean alreadyMarked = attendanceRepository
-                            .findBySession_IdAndStudent_Id(session.getId(), student.getId())
+                            .findAllBySession_IdAndStudent_Id(session.getId(), student.getId())
                             .stream()
                             .anyMatch(a -> a.getStatus() == AttendanceStatus.ABSENT);
 

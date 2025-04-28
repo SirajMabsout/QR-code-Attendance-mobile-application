@@ -17,10 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static Capstone.QR.utils.GenerateQR.generateQrCodeImage;
@@ -342,7 +339,7 @@ public class TeacherService {
 
         validateTeacherOwnsClass(session.getKlass().getId(), userDetails);
 
-        return attendanceRepository.findBySession_IdAndStudent_Id(sessionId, studentId);
+        return attendanceRepository.findAllBySession_IdAndStudent_Id(sessionId, studentId);
     }
 
     public void editAttendance(Long sessionId, Long attendanceId, AttendanceStatus newStatus, UserDetails userDetails) {
@@ -377,12 +374,23 @@ public class TeacherService {
         request.setStatus(RequestStatus.APPROVED);
         attendanceRequestRepository.save(request);
 
-        Attendance attendance = new Attendance();
-        attendance.setSession(session);
-        attendance.setStudent(request.getStudent());
-        attendance.setRecordedAt(LocalDateTime.now());
-        attendance.setStatus(AttendanceStatus.PRESENT);
-        attendanceRepository.save(attendance);
+        // ✅ Check if attendance already exists
+        Optional<Attendance> existingAttendance = attendanceRepository
+                .findBySession_IdAndStudent_Id(session.getId(), request.getStudent().getId());
+
+        if (existingAttendance.isPresent()) {
+            Attendance attendance = existingAttendance.get();
+            attendance.setRecordedAt(LocalDateTime.now());
+            attendance.setStatus(AttendanceStatus.PRESENT);
+            attendanceRepository.save(attendance);
+        } else {
+            Attendance newAttendance = new Attendance();
+            newAttendance.setSession(session);
+            newAttendance.setStudent(request.getStudent());
+            newAttendance.setRecordedAt(LocalDateTime.now());
+            newAttendance.setStatus(AttendanceStatus.PRESENT);
+            attendanceRepository.save(newAttendance);
+        }
     }
 
     public void rejectAttendanceRequest(Long requestId, Long sessionId, UserDetails userDetails) {
@@ -398,9 +406,26 @@ public class TeacherService {
             throw new RuntimeException("Request already handled.");
         }
 
+        // ✅ Update attendance if exists
+        Optional<Attendance> existingAttendance = attendanceRepository
+                .findBySession_IdAndStudent_Id(session.getId(), request.getStudent().getId());
+
+        if (existingAttendance.isPresent()) {
+            Attendance attendance = existingAttendance.get();
+
+            // You can either:
+            // - delete it if you want no trace
+            // - OR update it to ABSENT if session already passed
+            attendance.setStatus(AttendanceStatus.ABSENT);
+            attendance.setRecordedAt(LocalDateTime.now()); // update recordedAt for audit
+            attendanceRepository.save(attendance);
+        }
+
+        // ✅ Update the request status
         request.setStatus(RequestStatus.REJECTED);
         attendanceRequestRepository.save(request);
     }
+
 
     public List<AttendanceRequestResponse> getPendingSessionRequests(Long sessionId, UserDetails userDetails) {
         ClassSession session = classSessionRepository.findById(sessionId)
