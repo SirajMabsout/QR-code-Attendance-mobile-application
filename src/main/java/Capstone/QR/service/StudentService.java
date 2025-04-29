@@ -109,12 +109,6 @@ public class StudentService {
 
         // ✅ If within distance
         if (distance <= allowedDistance) {
-            AttendanceRequest Request = new AttendanceRequest();
-            Request.setStudent(student);
-            Request.setSession(session);
-            Request.setRequestedAt(LocalDateTime.now());
-            Request.setStatus(RequestStatus.PENDING);
-            attendanceRequestRepository.save(Request);
             Optional<Attendance> attendanceOpt = attendanceRepository
                     .findAllBySession_IdAndStudent_Id(session.getId(), student.getId())
                     .stream()
