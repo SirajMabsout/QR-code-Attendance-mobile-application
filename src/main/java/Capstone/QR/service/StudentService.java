@@ -189,48 +189,56 @@ public class StudentService {
         Student student = studentRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Student not found"));
 
-        List<ClassSession> sessions = classSessionRepository.findByKlass_Id(classId)
-                .stream()
-                .filter(s -> !s.getSessionDate().isAfter(LocalDate.now()))
+        List<ClassSession> pastSessions = classSessionRepository.findByKlass_Id(classId).stream()
+                .filter(s -> !s.isCanceled() && !s.getSessionDate().isAfter(LocalDate.now()))
                 .collect(Collectors.toList());
 
         List<Attendance> attendanceList = attendanceRepository.findBySession_Klass_IdAndStudent_Id(classId, student.getId());
 
-        Map<Long, String> attendanceMap = attendanceList.stream()
+        // Map: sessionId → attendance status
+        Map<Long, AttendanceStatus> attendanceMap = attendanceList.stream()
                 .collect(Collectors.toMap(
                         a -> a.getSession().getId(),
-                        a -> a.getStatus().toString()
+                        Attendance::getStatus
                 ));
 
         List<StudentAttendanceSummaryResponse.SessionStatus> sessionStatuses = new ArrayList<>();
         int present = 0, excused = 0, absent = 0;
 
-        for (ClassSession session : sessions) {
-            String status = attendanceMap.getOrDefault(session.getId(), "ABSENT");
+        for (ClassSession session : pastSessions) {
+            AttendanceStatus status = attendanceMap.get(session.getId());
 
-            if (status.equalsIgnoreCase("PRESENT")) present++;
-            else if (status.equalsIgnoreCase("EXCUSED")) excused++;
-            else absent++;
+            String displayStatus;
+            if (status == AttendanceStatus.PRESENT) {
+                present++;
+                displayStatus = "PRESENT";
+            } else if (status == AttendanceStatus.EXCUSED) {
+                excused++;
+                displayStatus = "EXCUSED";
+            } else if (status == AttendanceStatus.ABSENT) {
+                absent++;
+                displayStatus = "ABSENT";
+            } else {
+                displayStatus = "NOT_RECORDED"; // Optional: tracks sessions with no attendance yet
+            }
 
             sessionStatuses.add(new StudentAttendanceSummaryResponse.SessionStatus(
                     session.getSessionDate(),
-                    status
+                    displayStatus
             ));
         }
 
         Klass klass = klassRepository.findById(classId)
                 .orElseThrow(() -> new RuntimeException("Class not found"));
 
+        int total = pastSessions.size();
         int allowedAbsences = klass.getMaxAbsencesAllowed();
-        int remaining = allowedAbsences - absent;
-        if (remaining < 0) remaining = 0;
-
-        int total = sessions.size();
+        int remaining = Math.max(allowedAbsences - absent, 0);
         double percentage = total == 0 ? 0 : (present * 100.0 / total);
 
         return new StudentAttendanceSummaryResponse(
                 sessionStatuses,
-                klass.getMaxAbsencesAllowed(),
+                allowedAbsences,
                 total,
                 present,
                 excused,
@@ -239,7 +247,6 @@ public class StudentService {
                 percentage
         );
     }
-
 
 
 

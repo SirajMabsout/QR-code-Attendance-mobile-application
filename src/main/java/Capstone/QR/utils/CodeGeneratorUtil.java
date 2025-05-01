@@ -5,6 +5,6 @@ import java.util.UUID;
 public class CodeGeneratorUtil {
 
     public static String generateJoinCode() {
-        return UUID.randomUUID().toString().substring(0, 8);
+        return UUID.randomUUID().toString().substring(0, 5);
     }
 }

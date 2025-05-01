@@ -1,6 +1,7 @@
 package Capstone.QR.repository;
 
 import Capstone.QR.model.Attendance;
+import Capstone.QR.model.AttendanceStatus;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -24,6 +25,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
 
     Optional<Attendance> findBySession_IdAndStudent_Id(Long sessionId, Long studentId);
 
+    long countByKlass_IdAndStudent_IdAndStatus(Long klassId, Long studentId, AttendanceStatus status);
 
     @Transactional
     @Modifying

@@ -21,4 +21,5 @@ public class AttendanceResponse {
     private String studentname;
     private LocalDateTime recordedAt;
     private AttendanceStatus status;
+    private boolean MaxAbsence;
 }

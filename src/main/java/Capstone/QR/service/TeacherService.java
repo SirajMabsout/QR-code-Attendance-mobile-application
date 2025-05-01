@@ -168,19 +168,21 @@ public class TeacherService {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Student not found"));
 
-        // Total valid sessions (excluding canceled and future sessions)
-        List<ClassSession> sessions = classSessionRepository.findByKlass_Id(classId).stream()
-                .filter(s -> !s.isCanceled() && !s.getSessionDate().atTime(s.getSessionTime()).isAfter(LocalDateTime.now()))
+        // Valid sessions = not canceled and not in the future
+        List<ClassSession> validSessions = classSessionRepository.findByKlass_Id(classId).stream()
+                .filter(s -> !s.isCanceled() &&
+                        !s.getSessionDate().atTime(s.getSessionTime()).isAfter(LocalDateTime.now()))
                 .toList();
 
+        int total = validSessions.size();
+
+        // Fetch all attendance records for this student in this class
         List<Attendance> attendances = attendanceRepository.findBySession_Klass_IdAndStudent_Id(classId, studentId);
 
-        int total = sessions.size();
+        // Count by actual status instead of computing indirectly
         int present = (int) attendances.stream().filter(a -> a.getStatus() == AttendanceStatus.PRESENT).count();
         int excused = (int) attendances.stream().filter(a -> a.getStatus() == AttendanceStatus.EXCUSED).count();
-
-        int attended = present + excused;
-        int absent = total - attended;
+        int absent = (int) attendances.stream().filter(a -> a.getStatus() == AttendanceStatus.ABSENT).count();
 
         double percentage = total == 0 ? 0.0 : (present * 100.0) / total;
 
@@ -269,13 +271,19 @@ public class TeacherService {
                                 session.getKlass().getId(),
                                 imageUrl,
                                 student.getId(),
-
                                 sessionId,
                                 student.getName(),
                                 attendance.getRecordedAt(),
-                                attendance.getStatus()
+                                attendance.getStatus(),
 
+                                // ✅ NEW: compute maxAbsence directly inline
+                                attendanceRepository.countByKlass_IdAndStudent_IdAndStatus(
+                                        session.getKlass().getId(),
+                                        student.getId(),
+                                        AttendanceStatus.ABSENT
+                                ) >= session.getKlass().getMaxAbsencesAllowed()
                         );
+
                     } else if (now.isBefore(sessionEnd)) {
                         // Student did not scan yet but session is still ongoing → PENDING
                         Attendance newPending = new Attendance();
@@ -287,15 +295,23 @@ public class TeacherService {
                         Attendance savedPending = attendanceRepository.save(newPending);
 
                         return new AttendanceResponse(
-                                savedPending.getId(),
+                                attendance.getId(),
                                 session.getKlass().getId(),
                                 imageUrl,
                                 student.getId(),
                                 sessionId,
                                 student.getName(),
-                                savedPending.getRecordedAt(),
-                                AttendanceStatus.PENDING
+                                attendance.getRecordedAt(),
+                                attendance.getStatus(),
+
+                                // ✅ NEW: compute maxAbsence directly inline
+                                attendanceRepository.countByKlass_IdAndStudent_IdAndStatus(
+                                        session.getKlass().getId(),
+                                        student.getId(),
+                                        AttendanceStatus.ABSENT
+                                ) >= session.getKlass().getMaxAbsencesAllowed()
                         );
+
                     } else {
                         // Student did not scan and session ended → ABSENT
                         Attendance newAbsent = new Attendance();
@@ -307,15 +323,23 @@ public class TeacherService {
                         Attendance savedAbsent = attendanceRepository.save(newAbsent);
 
                         return new AttendanceResponse(
-                                savedAbsent.getId(),
+                                attendance.getId(),
                                 session.getKlass().getId(),
                                 imageUrl,
                                 student.getId(),
                                 sessionId,
                                 student.getName(),
-                                savedAbsent.getRecordedAt(),
-                                AttendanceStatus.ABSENT
+                                attendance.getRecordedAt(),
+                                attendance.getStatus(),
+
+                                // ✅ NEW: compute maxAbsence directly inline
+                                attendanceRepository.countByKlass_IdAndStudent_IdAndStatus(
+                                        session.getKlass().getId(),
+                                        student.getId(),
+                                        AttendanceStatus.ABSENT
+                                ) >= session.getKlass().getMaxAbsencesAllowed()
                         );
+
                     }
 
                 })
