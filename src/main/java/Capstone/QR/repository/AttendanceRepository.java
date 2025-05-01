@@ -25,7 +25,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
 
     Optional<Attendance> findBySession_IdAndStudent_Id(Long sessionId, Long studentId);
 
-    long countByKlass_IdAndStudent_IdAndStatus(Long klassId, Long studentId, AttendanceStatus status);
+    long countBySession_Klass_IdAndStudent_IdAndStatus(Long classId, Long studentId, AttendanceStatus status);
 
     @Transactional
     @Modifying

@@ -277,7 +277,7 @@ public class TeacherService {
                                 attendance.getStatus(),
 
                                 // ✅ NEW: compute maxAbsence directly inline
-                                attendanceRepository.countByKlass_IdAndStudent_IdAndStatus(
+                                attendanceRepository.countBySession_Klass_IdAndStudent_IdAndStatus(
                                         session.getKlass().getId(),
                                         student.getId(),
                                         AttendanceStatus.ABSENT
@@ -305,7 +305,7 @@ public class TeacherService {
                                 attendance.getStatus(),
 
                                 // ✅ NEW: compute maxAbsence directly inline
-                                attendanceRepository.countByKlass_IdAndStudent_IdAndStatus(
+                                attendanceRepository.countBySession_Klass_IdAndStudent_IdAndStatus(
                                         session.getKlass().getId(),
                                         student.getId(),
                                         AttendanceStatus.ABSENT
@@ -333,7 +333,7 @@ public class TeacherService {
                                 attendance.getStatus(),
 
                                 // ✅ NEW: compute maxAbsence directly inline
-                                attendanceRepository.countByKlass_IdAndStudent_IdAndStatus(
+                                attendanceRepository.countBySession_Klass_IdAndStudent_IdAndStatus(
                                         session.getKlass().getId(),
                                         student.getId(),
                                         AttendanceStatus.ABSENT
