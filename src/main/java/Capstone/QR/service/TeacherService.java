@@ -295,14 +295,14 @@ public class TeacherService {
                         Attendance savedPending = attendanceRepository.save(newPending);
 
                         return new AttendanceResponse(
-                                attendance.getId(),
+                                savedPending.getId(),
                                 session.getKlass().getId(),
                                 imageUrl,
                                 student.getId(),
                                 sessionId,
                                 student.getName(),
-                                attendance.getRecordedAt(),
-                                attendance.getStatus(),
+                                savedPending.getRecordedAt(),
+                                savedPending.getStatus(),
 
                                 // ✅ NEW: compute maxAbsence directly inline
                                 attendanceRepository.countBySession_Klass_IdAndStudent_IdAndStatus(
