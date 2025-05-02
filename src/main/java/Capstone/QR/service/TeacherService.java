@@ -323,7 +323,7 @@ public class TeacherService {
                         Attendance savedAbsent = attendanceRepository.save(newAbsent);
 
                         return new AttendanceResponse(
-                                attendance.getId(),
+                                savedAbsent.getId(),
                                 session.getKlass().getId(),
                                 imageUrl,
                                 student.getId(),

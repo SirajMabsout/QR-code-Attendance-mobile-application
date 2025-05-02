@@ -17,6 +17,7 @@ public interface AttendanceRequestRepository extends JpaRepository<AttendanceReq
     List<AttendanceRequest> findBySessionIdAndStatus(Long sessionId, RequestStatus status);
     // In AttendanceRequestRepository.java
     Optional<AttendanceRequest> findByStudentIdAndSessionId(Long studentId, Long sessionId);
+    boolean existsBySession_IdAndStudent_Id(Long sessionId, Long studentId);
 
     @Modifying
     @Query("DELETE FROM AttendanceRequest ar WHERE ar.session.id IN :sessionIds")
