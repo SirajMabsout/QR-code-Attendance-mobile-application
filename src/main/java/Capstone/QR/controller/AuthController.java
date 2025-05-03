@@ -28,6 +28,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 
@@ -77,7 +78,7 @@ public class AuthController {
         emailService.send(request.getEmail(), "Verify Your Email", emailBody);
 
 
-        return ResponseEntity.ok(new ApiResponse<>("Verification email sent", null));
+        return ResponseEntity.ok(new ApiResponse<>("Verification email is  sent to your mail box. Verify the account in order to use it", null));
     }
 
 
@@ -112,13 +113,33 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@RequestBody LoginRequest request, HttpServletResponse response) {
         try {
-            Authentication authentication = authenticationManager.authenticate(
+            // 1. Check if user exists
+            Optional<User> optionalUser = userRepository.findByEmail(request.getEmail());
+
+            if (optionalUser.isEmpty()) {
+                // 2. If user is not found, check if email has pending verification
+                boolean hasPendingVerification = emailVerificationTokenRepository
+                        .findByEmail(request.getEmail())
+                        .isPresent();
+
+                if (hasPendingVerification) {
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                            .body(new ApiResponse<>("Account needs to be verified before logging in.", null));
+                }
+
+                // 3. If no user and no verification token, respond with email not found
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponse<>("Email not registered.", null));
+            }
+
+            User user = optionalUser.get();
+
+            // 4. Authenticate credentials
+            authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
             );
 
-            User user = userRepository.findByEmail(request.getEmail())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-
+            // 5. Check teacher approval
             if (user.getRole() == Role.TEACHER) {
                 Teacher teacher = teacherRepository.findById(user.getId())
                         .orElseThrow(() -> new RuntimeException("Teacher profile not found"));
@@ -128,6 +149,7 @@ public class AuthController {
                 }
             }
 
+            // 6. Generate tokens
             String accessToken = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
             String refreshToken = refreshTokenService.createRefreshToken(user);
 
@@ -150,12 +172,13 @@ public class AuthController {
             response.addHeader("Set-Cookie", accessCookie.toString());
             response.addHeader("Set-Cookie", refreshCookie.toString());
 
+            // 7. Return success response
             LoginResponse loginResponse = new LoginResponse("Login was successful", user.getRole().name(), user.getName(), user.getId());
             return ResponseEntity.ok(new ApiResponse<>("Login was successful", loginResponse));
 
         } catch (AuthenticationException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new ApiResponse<>("Invalid credentials.", null));
+                    .body(new ApiResponse<>("Incorrect password.", null));
         }
     }
 
