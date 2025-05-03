@@ -13,6 +13,7 @@ import jakarta.mail.MessagingException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -80,9 +81,10 @@ public class AuthController {
 
         return ResponseEntity.ok(new ApiResponse<>("Verification email is  sent to your mail box. Verify the account in order to use it", null));
     }
-
+    
 
     @GetMapping("/verify-email")
+    @Transactional
     public ResponseEntity<ApiResponse<String>> verifyEmail(@RequestParam String token) {
         EmailVerificationToken verification = emailVerificationTokenRepository.findByToken(token)
                 .orElseThrow(() -> new RuntimeException("Invalid token"));
@@ -104,10 +106,11 @@ public class AuthController {
         user.setRole(verification.getRole());
 
         userRepository.save(user);
-        emailVerificationTokenRepository.deleteByToken(token);
+        emailVerificationTokenRepository.deleteByToken(token); // ✅ now works
 
-        return ResponseEntity.ok(new ApiResponse<>("Email verified and account created, You may log in now.", null));
+        return ResponseEntity.ok(new ApiResponse<>("Email verified and account created. You may log in now.", null));
     }
+
 
 
     @PostMapping("/login")
