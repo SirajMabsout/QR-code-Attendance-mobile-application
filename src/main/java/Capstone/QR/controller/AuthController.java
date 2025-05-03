@@ -9,6 +9,7 @@ import Capstone.QR.security.jwt.JwtUtil;
 import Capstone.QR.service.EmailService;
 import Capstone.QR.service.PasswordResetService;
 import Capstone.QR.service.RefreshTokenService;
+import jakarta.mail.MessagingException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,6 +27,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 
 @RestController
@@ -40,39 +43,71 @@ public class AuthController {
     private final RefreshTokenService refreshTokenService;
     private final TeacherRepository teacherRepository;
     private final PasswordResetService resetService;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+    private final EmailService emailService;
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<String>> register(@RequestBody @Valid RegisterRequest request) {
+    public ResponseEntity<ApiResponse<String>> register(@RequestBody @Valid RegisterRequest request) throws MessagingException {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiResponse<>("Email already registered", null));
         }
 
-        Role role = request.getRole();
-        if (role == Role.ADMIN) {
+        if (request.getRole() == Role.ADMIN) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ApiResponse<>("Admin registration is not allowed", null));
         }
 
-        User user;
-        switch (role) {
-            case TEACHER -> user = new Teacher();
-            case STUDENT -> user = new Student();
-            default -> {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(new ApiResponse<>("Invalid role specified", null));
-            }
+        // Generate token and save temporary data
+        String token = UUID.randomUUID().toString();
+        EmailVerificationToken verification = new EmailVerificationToken();
+        verification.setEmail(request.getEmail());
+        verification.setName(request.getName());
+        verification.setEncodedPassword(passwordEncoder.encode(request.getPassword()));
+        verification.setRole(request.getRole());
+        verification.setToken(token);
+        verification.setCreatedAt(LocalDateTime.now());
+        verification.setExpiresAt(LocalDateTime.now().plusMinutes(30));
+
+        emailVerificationTokenRepository.save(verification);
+
+        // Send email
+        String verificationLink = "https://qr-backend.azurewebsites.net/api/auth/verify-email?token=" + token;
+        String emailBody = emailService.buildVerificationEmail(request.getName(), verificationLink);
+        emailService.send(request.getEmail(), "Verify Your Email", emailBody);
+
+
+        return ResponseEntity.ok(new ApiResponse<>("Verification email sent", null));
+    }
+
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<ApiResponse<String>> verifyEmail(@RequestParam String token) {
+        EmailVerificationToken verification = emailVerificationTokenRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid token"));
+
+        if (verification.getExpiresAt().isBefore(LocalDateTime.now())) {
+            return ResponseEntity.status(HttpStatus.GONE)
+                    .body(new ApiResponse<>("Token expired", null));
         }
 
-        user.setName(request.getName());
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(role);
-        userRepository.save(user);
+        User user = switch (verification.getRole()) {
+            case STUDENT -> new Student();
+            case TEACHER -> new Teacher();
+            default -> throw new RuntimeException("Invalid role");
+        };
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new ApiResponse<>("User registered successfully", null));
+        user.setName(verification.getName());
+        user.setEmail(verification.getEmail());
+        user.setPassword(verification.getEncodedPassword());
+        user.setRole(verification.getRole());
+
+        userRepository.save(user);
+        emailVerificationTokenRepository.deleteByToken(token);
+
+        return ResponseEntity.ok(new ApiResponse<>("Email verified and account created, You may log in now.", null));
     }
+
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@RequestBody LoginRequest request, HttpServletResponse response) {
@@ -207,4 +242,7 @@ public class AuthController {
         );
         return ResponseEntity.ok(new ApiResponse<>("Password reset successfully", null));
     }
+
+
+
 }
