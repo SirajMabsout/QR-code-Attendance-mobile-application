@@ -50,19 +50,25 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<String>> register(@RequestBody @Valid RegisterRequest request) throws MessagingException {
+        // 1. If already registered in User table, reject
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiResponse<>("Email already registered", null));
         }
 
+        // 2. Block admin registrations
         if (request.getRole() == Role.ADMIN) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ApiResponse<>("Admin registration is not allowed", null));
         }
 
-        // Generate token and save temporary data
+        // 3. Generate token
         String token = UUID.randomUUID().toString();
-        EmailVerificationToken verification = new EmailVerificationToken();
+
+        // 4. Check if there's an existing verification token and update it
+        Optional<EmailVerificationToken> existingToken = emailVerificationTokenRepository.findByEmail(request.getEmail());
+
+        EmailVerificationToken verification = existingToken.orElse(new EmailVerificationToken());
         verification.setEmail(request.getEmail());
         verification.setName(request.getName());
         verification.setEncodedPassword(passwordEncoder.encode(request.getPassword()));
@@ -73,15 +79,15 @@ public class AuthController {
 
         emailVerificationTokenRepository.save(verification);
 
-        // Send email
+        // 5. Send email
         String verificationLink = "https://qr-backend.azurewebsites.net/auth/verify-email?token=" + token;
         String emailBody = emailService.buildVerificationEmail(request.getName(), verificationLink);
         emailService.send(request.getEmail(), "Verify Your Email", emailBody);
 
-
-        return ResponseEntity.ok(new ApiResponse<>("Verification email is  sent to your mail box. Verify the account in order to use it", null));
+        return ResponseEntity.ok(new ApiResponse<>("Verification email is sent to your mail box. Verify the account in order to use it", null));
     }
-    
+
+
 
     @GetMapping("/verify-email")
     @Transactional
