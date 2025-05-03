@@ -72,7 +72,7 @@ public class AuthController {
         emailVerificationTokenRepository.save(verification);
 
         // Send email
-        String verificationLink = "https://qr-backend.azurewebsites.net/api/auth/verify-email?token=" + token;
+        String verificationLink = "https://qr-backend.azurewebsites.net/auth/verify-email?token=" + token;
         String emailBody = emailService.buildVerificationEmail(request.getName(), verificationLink);
         emailService.send(request.getEmail(), "Verify Your Email", emailBody);
 
