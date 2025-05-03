@@ -23,7 +23,7 @@ public class UsageController {
 
     @PostMapping("/track")
     public ResponseEntity<ApiResponse<Boolean>> trackDeviceUsage(@RequestBody DeviceUsageRequest request) {
-        boolean expired = deviceUsageService.isUsageExpired(request.getDeviceId());
+        boolean expired = deviceUsageService.isUsageExpired(request.getDeviceId(),request.getUsedMillis());
 
         ApiResponse<Boolean> response = new ApiResponse<>(
                 expired ? "Access expired for this device" : "Access is still valid",
