@@ -35,18 +35,15 @@ public class TeacherService {
     private final ClassSessionRepository classSessionRepository;
     private final StudentRepository studentRepository;
 
-    // ========== CLASS MANAGEMENT ==========
 
     public ClassResponse createClass(CreateClassRequest request, UserDetails userDetails) {
         Teacher teacher = teacherRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Teacher not found"));
 
-        // ❌ Check for duplicate class name
         if (klassRepository.existsByTeacherAndName(teacher, request.getName())) {
             throw new RuntimeException("You already have a class with this name.");
         }
 
-        // ❌ Check for class schedule conflict using date + day + time + duration
         List<Klass> existingClasses = klassRepository.findByTeacher(teacher);
         for (Klass existing : existingClasses) {
             boolean dateOverlap = !request.getEndDate().isBefore(existing.getStartDate()) &&
@@ -61,7 +58,6 @@ public class TeacherService {
             LocalTime existingStart = existing.getClassTime();
             LocalTime existingEnd = existingStart.plusMinutes(existing.getDurationMinutes());
 
-            // ✅ Correct conflict check: overlaps or touches
             boolean timeConflict = newStart.isBefore(existingEnd) && newEnd.isAfter(existingStart);
 
             if (dayConflict && timeConflict) {
@@ -69,7 +65,6 @@ public class TeacherService {
             }
         }
 
-        // ✅ Proceed to create the class
         Klass klass = new Klass();
         klass.setName(request.getName());
         klass.setDescription(request.getDescription());
@@ -81,10 +76,9 @@ public class TeacherService {
         klass.setClassTime(request.getClassTime());
         klass.setJoinCode(CodeGeneratorUtil.generateJoinCode());
         klass.setAcceptanceRadiusMeters(request.getAcceptanceRadiusMeters());
-        klass.setDurationMinutes(request.getDurationMinutes()); // ✅ Set class duration
+        klass.setDurationMinutes(request.getDurationMinutes());
         klass.setAllowedWifiSSIDs(request.getAllowedWifiSSIDs());
 
-        // ✅ Generate and set sessions
         List<ClassSession> sessions = GenerateSessions.generateSessionsForClass(klass);
         klass.setSessions(sessions);
 
@@ -139,7 +133,6 @@ public class TeacherService {
                 })
                 .toList();
 
-        // ✅ Check if there is a session today
         boolean todaySession = sessionResponses.stream()
                 .anyMatch(SessionResponse::isToday);
 
@@ -157,7 +150,6 @@ public class TeacherService {
                 todaySession,
                 sessionResponses,
                 enrolledStudents
-                   // ✅ Added here
         );
     }
 
@@ -168,7 +160,6 @@ public class TeacherService {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Student not found"));
 
-        // Valid sessions = not canceled and not in the future
         List<ClassSession> validSessions = classSessionRepository.findByKlass_Id(classId).stream()
                 .filter(s -> !s.isCanceled() &&
                         !s.getSessionDate().atTime(s.getSessionTime()).isAfter(LocalDateTime.now()))
@@ -176,10 +167,8 @@ public class TeacherService {
 
         int total = validSessions.size();
 
-        // Fetch all attendance records for this student in this class
         List<Attendance> attendances = attendanceRepository.findBySession_Klass_IdAndStudent_Id(classId, studentId);
 
-        // Count by actual status instead of computing indirectly
         int present = (int) attendances.stream().filter(a -> a.getStatus() == AttendanceStatus.PRESENT).count();
         int excused = (int) attendances.stream().filter(a -> a.getStatus() == AttendanceStatus.EXCUSED).count();
         int absent = (int) attendances.stream().filter(a -> a.getStatus() == AttendanceStatus.ABSENT).count();
@@ -201,7 +190,6 @@ public class TeacherService {
         );
     }
 
-    // ========== QR CODE ==========
 
     public QRCode generateQrCodeForSession(Long sessionId, double latitude, double longitude, UserDetails userDetails) {
         ClassSession session = classSessionRepository.findById(sessionId)
@@ -212,11 +200,10 @@ public class TeacherService {
         String qrText = UUID.randomUUID().toString();
         String qrBase64 = generateQrCodeImage(qrText);
 
-        // ✅ Check if QR already exists for the session
         QRCode qrCode = qrCodeRepository.findBySessionId(sessionId)
                 .orElse(new QRCode());
 
-        qrCode.setSession(session); // safe even if already set
+        qrCode.setSession(session);
         qrCode.setSessionDate(session.getSessionDate().atTime(session.getSessionTime()));
         qrCode.setExpiresAt(LocalDateTime.now().plusMinutes(10));
         qrCode.setQrCodeData(qrBase64);
@@ -226,8 +213,6 @@ public class TeacherService {
         return qrCodeRepository.save(qrCode);
     }
 
-
-    // ========== SESSION DETAILS ==========
 
     public SessionDetailResponse getSessionDetails(Long sessionId, UserDetails userDetails) {
         ClassSession session = classSessionRepository.findById(sessionId)
@@ -263,8 +248,7 @@ public class TeacherService {
         List<AttendanceResponse> attendanceResponses = enrolledStudents.stream()
                 .map(student -> {
                     Attendance attendance = attendanceMap.get(student.getId());
-                    String imageUrl = student.getProfileImageUrl(); // Get student's profile image URL
-
+                    String imageUrl = student.getProfileImageUrl();
                     if (attendance != null) {
                         return new AttendanceResponse(
                                 attendance.getId(),
@@ -276,7 +260,6 @@ public class TeacherService {
                                 attendance.getRecordedAt(),
                                 attendance.getStatus(),
 
-                                // ✅ NEW: compute maxAbsence directly inline
                                 attendanceRepository.countBySession_Klass_IdAndStudent_IdAndStatus(
                                         session.getKlass().getId(),
                                         student.getId(),
@@ -285,7 +268,6 @@ public class TeacherService {
                         );
 
                     } else if (now.isBefore(sessionEnd)) {
-                        // Student did not scan yet but session is still ongoing → PENDING
                         Attendance newPending = new Attendance();
                         newPending.setStudent(student);
                         newPending.setSession(session);
@@ -304,7 +286,6 @@ public class TeacherService {
                                 savedPending.getRecordedAt(),
                                 savedPending.getStatus(),
 
-                                // ✅ NEW: compute maxAbsence directly inline
                                 attendanceRepository.countBySession_Klass_IdAndStudent_IdAndStatus(
                                         session.getKlass().getId(),
                                         student.getId(),
@@ -313,7 +294,6 @@ public class TeacherService {
                         );
 
                     } else {
-                        // Student did not scan and session ended → ABSENT
                         Attendance newAbsent = new Attendance();
                         newAbsent.setStudent(student);
                         newAbsent.setSession(session);
@@ -332,7 +312,6 @@ public class TeacherService {
                                 attendance.getRecordedAt(),
                                 attendance.getStatus(),
 
-                                // ✅ NEW: compute maxAbsence directly inline
                                 attendanceRepository.countBySession_Klass_IdAndStudent_IdAndStatus(
                                         session.getKlass().getId(),
                                         student.getId(),
@@ -355,7 +334,6 @@ public class TeacherService {
         );
     }
 
-    // ========== ATTENDANCE ==========
 
     public List<Attendance> getSessionAttendance(Long sessionId, Long studentId, UserDetails userDetails) {
         ClassSession session = classSessionRepository.findById(sessionId)
@@ -380,7 +358,6 @@ public class TeacherService {
         attendanceRepository.save(attendance);
     }
 
-    // ========== ATTENDANCE REQUESTS ==========
 
     public void approveAttendanceRequest(Long requestId, Long sessionId, UserDetails userDetails) {
         AttendanceRequest request = attendanceRequestRepository.findById(requestId)
@@ -398,7 +375,6 @@ public class TeacherService {
         request.setStatus(RequestStatus.APPROVED);
         attendanceRequestRepository.save(request);
 
-        // ✅ Check if attendance already exists
         Optional<Attendance> existingAttendance = attendanceRepository
                 .findBySession_IdAndStudent_Id(session.getId(), request.getStudent().getId());
 
@@ -430,22 +406,17 @@ public class TeacherService {
             throw new RuntimeException("Request already handled.");
         }
 
-        // ✅ Update attendance if exists
         Optional<Attendance> existingAttendance = attendanceRepository
                 .findBySession_IdAndStudent_Id(session.getId(), request.getStudent().getId());
 
         if (existingAttendance.isPresent()) {
             Attendance attendance = existingAttendance.get();
 
-            // You can either:
-            // - delete it if you want no trace
-            // - OR update it to ABSENT if session already passed
             attendance.setStatus(AttendanceStatus.ABSENT);
-            attendance.setRecordedAt(LocalDateTime.now()); // update recordedAt for audit
+            attendance.setRecordedAt(LocalDateTime.now());
             attendanceRepository.save(attendance);
         }
 
-        // ✅ Update the request status
         request.setStatus(RequestStatus.REJECTED);
         attendanceRequestRepository.save(request);
     }
@@ -466,8 +437,7 @@ public class TeacherService {
                             request.getId(),
                             student.getId(),
                             student.getName(),
-                            student.getEmail(),                      // ✅ add this
-                            student.getProfileImageUrl(),
+                            student.getEmail(), student.getProfileImageUrl(),
                             session.getKlass().getId(),
                             request.getRequestedAt(),
                             request.getStatus()
@@ -475,8 +445,6 @@ public class TeacherService {
                 }).collect(Collectors.toList());
     }
 
-
-    // ========== STUDENT JOIN REQUESTS ==========
 
     public void approveStudentJoin(Long classId, Long studentId, UserDetails userDetails) {
         validateTeacherOwnsClass(classId, userDetails);
@@ -507,14 +475,11 @@ public class TeacherService {
                             s.getId(),
                             s.getName(),
                             s.getEmail(),
-                            s.getProfileImageUrl() // Assuming your Student entity has this method
-                    );
+                            s.getProfileImageUrl());
                 })
                 .collect(Collectors.toList());
     }
 
-
-    // ========== HELPERS ==========
 
     private Klass validateTeacherOwnsClass(Long classId, UserDetails userDetails) {
         Klass klass = klassRepository.findById(classId)
@@ -534,7 +499,6 @@ public class TeacherService {
         Klass klass = session.getKlass();
         validateTeacherOwnsClass(klass.getId(), userDetails);
 
-        // ✅ Handle cancelation
         if (req.getCanceled()) {
             session.setCanceled(true);
 
@@ -545,17 +509,14 @@ public class TeacherService {
             attendanceRepository.saveAll(attendances);
         }
 
-        // ✅ Update topic
         if (req.getTopic() != null) {
             session.setTopic(req.getTopic());
         }
 
-        // ✅ Update date and time (with conflict checks)
         if (req.getSessionDate() != null && req.getSessionTime() != null) {
             LocalDateTime newStart = req.getSessionDate().atTime(req.getSessionTime());
             LocalDateTime newEnd = newStart.plusMinutes(klass.getDurationMinutes());
 
-            // ✅ Check teacher conflicts
             Long teacherId = klass.getTeacher().getId();
             List<ClassSession> teacherSessions = classSessionRepository.findAllByTeacherIdAndDate(
                     teacherId, req.getSessionDate());
@@ -571,7 +532,6 @@ public class TeacherService {
                 }
             }
 
-            // ✅ Check student conflicts
             List<Student> enrolledStudents = klassStudentRepository.findApprovedStudentsByClassId(klass.getId());
             for (Student student : enrolledStudents) {
                 List<ClassSession> studentSessions = classSessionRepository.findSessionsByStudentIdAndDate(student.getId(), req.getSessionDate());
@@ -615,7 +575,7 @@ public class TeacherService {
         List<StudentClassAttendanceSummaryResponse> summaries = new ArrayList<>();
 
         for (Student student : students) {
-            List<Attendance> attendanceRecords = attendanceRepository.findBySession_Klass_IdAndStudent_Id(classId,student.getId());
+            List<Attendance> attendanceRecords = attendanceRepository.findBySession_Klass_IdAndStudent_Id(classId, student.getId());
 
             int present = (int) attendanceRecords.stream().filter((a -> a.getStatus() == AttendanceStatus.PRESENT)).count();
             int excused = (int) attendanceRecords.stream().filter((a -> a.getStatus() == AttendanceStatus.EXCUSED)).count();
@@ -646,7 +606,6 @@ public class TeacherService {
     private ClassResponse mapToClassResponse(Klass klass) {
 
 
-
         return new ClassResponse(
                 klass.getId(),
                 klass.getName(),
@@ -659,7 +618,6 @@ public class TeacherService {
                 klass.getDurationMinutes(),
                 klass.getScheduledDays(),
                 klass.getAcceptanceRadiusMeters()
-                // ✅ Include in response
         );
     }
 

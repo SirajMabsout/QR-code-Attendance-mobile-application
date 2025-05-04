@@ -9,8 +9,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.http.*;
-import java.time.Duration;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.UUID;
 
@@ -56,7 +57,7 @@ public class ImgurImageService {
                 response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
                 if (response.statusCode() < 400) {
-                    break; // Success
+                    break;
                 } else {
                     throw new IOException("Imgur upload failed with HTTP " + response.statusCode());
                 }
@@ -64,7 +65,7 @@ public class ImgurImageService {
             } catch (Exception e) {
                 lastException = e;
                 if (attempt < maxRetries) {
-                    Thread.sleep(1000); // Optional backoff between attempts
+                    Thread.sleep(1000);
                 }
             }
         }

@@ -12,10 +12,9 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
-// === AttendanceRepository ===
 @Repository
 public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
-    List<Attendance> findBySession_Klass_Id(Long klassId); // ✅ correct
+    List<Attendance> findBySession_Klass_Id(Long klassId);
 
     List<Attendance> findBySession_Klass_IdAndStudent_Id(Long KlassId, Long studentId);
 
@@ -24,6 +23,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     List<Attendance> findBySession_Id(Long sessionId);
 
     Optional<Attendance> findBySession_IdAndStudent_Id(Long sessionId, Long studentId);
+
     List<Attendance> findBySession_IdAndStatus(Long sessionId, AttendanceStatus status);
 
     long countBySession_Klass_IdAndStudent_IdAndStatus(Long classId, Long studentId, AttendanceStatus status);

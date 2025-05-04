@@ -1,6 +1,5 @@
 package Capstone.QR.dto.Response;
 
-import Capstone.QR.model.ClassSession;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -26,9 +25,6 @@ public class ClassResponse {
     private int durationMinutes;
     private List<DayOfWeek> scheduledDays;
     private double acceptanceRadiusMeters;
-
-
-
 
 
 }

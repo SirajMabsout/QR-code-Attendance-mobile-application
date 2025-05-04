@@ -7,10 +7,8 @@ import lombok.NoArgsConstructor;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.UUID;
 
 @Entity
 @Data
@@ -37,26 +35,20 @@ public class Klass {
     private int maxAbsencesAllowed;
 
     @Column(nullable = false)
-    private int durationMinutes; // duration in minutes
+    private int durationMinutes;
 
-
-    // ✅ New scheduling fields:
-    private LocalDate startDate;           // e.g. 2025-04-01
-    private LocalDate endDate;             // e.g. 2025-07-31
-
+    private LocalDate startDate;
+    private LocalDate endDate;
     @ElementCollection
     @CollectionTable(name = "klass_days", joinColumns = @JoinColumn(name = "klass_id"))
     @Column(name = "day_of_week")
-    private List<DayOfWeek> scheduledDays; // e.g. MONDAY, WEDNESDAY
-
-    private LocalTime classTime;// e.g. 10:00 AM
-
+    private List<DayOfWeek> scheduledDays;
+    private LocalTime classTime;
     @Column(unique = true, nullable = false)
     private String joinCode;
 
     @OneToMany(mappedBy = "klass", cascade = CascadeType.ALL)
     private List<ClassSession> sessions;
-
 
 
     @Column(nullable = false)

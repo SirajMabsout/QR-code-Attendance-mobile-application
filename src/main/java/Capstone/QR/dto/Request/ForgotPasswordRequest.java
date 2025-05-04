@@ -16,5 +16,4 @@ public class ForgotPasswordRequest {
     @Email(message = "Invalid email format")
     private String email;
 
-    // Getters and Setters
 }

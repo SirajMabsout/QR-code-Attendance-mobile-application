@@ -6,7 +6,9 @@ import Capstone.QR.model.Klass;
 import Capstone.QR.repository.AttendanceRepository;
 import Capstone.QR.repository.KlassRepository;
 import lombok.RequiredArgsConstructor;
-import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 
@@ -31,14 +33,12 @@ public class AttendanceExportService {
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("Attendance");
 
-            // Header
             Row header = sheet.createRow(0);
             header.createCell(0).setCellValue("Student Name");
             header.createCell(1).setCellValue("Email");
             header.createCell(2).setCellValue("Status");
             header.createCell(3).setCellValue("Date");
 
-            // Data rows
             int rowNum = 1;
             for (Attendance att : attendanceList) {
                 Row row = sheet.createRow(rowNum++);

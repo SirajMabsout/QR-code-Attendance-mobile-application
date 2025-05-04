@@ -28,10 +28,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // Allow public endpoints
-                        .requestMatchers("/auth/**", "/api/usage/track" ).permitAll()
+                        .requestMatchers("/auth/**", "/api/usage/track").permitAll()
 
-                        // 🔓 Allow Swagger UI access
                         .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
@@ -40,12 +38,10 @@ public class SecurityConfig {
                                 "/webjars/**"
                         ).permitAll()
 
-                        // Role-based secured endpoints
                         .requestMatchers("/admin/**").hasAuthority("ADMIN")
                         .requestMatchers("/teacher/**").hasAuthority("TEACHER")
                         .requestMatchers("/student/**").hasAuthority("STUDENT")
 
-                        // Require authentication for everything else
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

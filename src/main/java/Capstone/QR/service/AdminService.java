@@ -7,7 +7,6 @@ import Capstone.QR.dto.Response.StudentInClassResponse;
 import Capstone.QR.model.Klass;
 import Capstone.QR.model.KlassStudent;
 import Capstone.QR.model.Teacher;
-import Capstone.QR.model.Student;
 import Capstone.QR.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +14,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -48,26 +46,20 @@ public class AdminService {
         Klass klass = klassRepository.findById(classId)
                 .orElseThrow(() -> new RuntimeException("Class not found"));
 
-        // 1. Find all session IDs
         List<Long> sessionIds = classSessionRepository.findSessionIdsByClassId(classId);
 
-        // 2. Delete attendance, QR codes, and attendance requests linked to sessions
         if (!sessionIds.isEmpty()) {
             attendanceRepository.deleteBySessionIds(sessionIds);
             qrCodeRepository.deleteBySessionIds(sessionIds);
             attendanceRequestRepository.deleteBySessionIds(sessionIds);
         }
 
-        // 3. Delete sessions
         classSessionRepository.deleteByKlassId(classId);
 
-        // 4. Delete student enrollments
         klassStudentRepository.deleteByKlassId(classId);
 
-        // 5. Delete the class
         klassRepository.delete(klass);
     }
-
 
 
     public List<PendingTeacherResponse> getPendingTeachers() {
@@ -94,13 +86,12 @@ public class AdminService {
     }
 
 
-
     public List<AdminClassResponse> getAllClassesForAdmin() {
         List<Klass> classes = klassRepository.findAll();
 
         return classes.stream().map(klass -> {
             boolean isFinished = klass.getEndDate().isBefore(LocalDate.now());
-            String teacherEmail = klass.getTeacher().getEmail(); // assuming you have this relation
+            String teacherEmail = klass.getTeacher().getEmail();
             return new AdminClassResponse(
                     klass.getId(),
                     klass.getName(),
@@ -112,7 +103,6 @@ public class AdminService {
     }
 
 
-    // === Unregister student from class ===
     public void removeStudentFromClass(Long classId, Long studentId) {
         KlassStudent join = klassStudentRepository.findByKlassIdAndStudentId(classId, studentId)
                 .orElseThrow(() -> new RuntimeException("Student is not enrolled in this class"));

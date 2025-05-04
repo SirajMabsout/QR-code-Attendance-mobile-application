@@ -17,7 +17,6 @@ public class RefreshTokenService {
 
     private final RefreshTokenRepository refreshTokenRepository;
 
-    // Create a refresh token for user
     @Transactional
     public String createRefreshToken(User user) {
         try {
@@ -39,7 +38,6 @@ public class RefreshTokenService {
     }
 
 
-    // Validate refresh token: check expiration
     public RefreshToken validateRefreshToken(String token) {
         RefreshToken refreshToken = refreshTokenRepository.findByToken(token)
                 .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
@@ -52,12 +50,11 @@ public class RefreshTokenService {
         return refreshToken;
     }
 
-    // Revoke refresh token (on logout)
     public void revokeRefreshToken(User user) {
         refreshTokenRepository.deleteByUser(user);
     }
 
-    @Scheduled(fixedRate = 1000 * 60 * 60*24) // every day
+    @Scheduled(fixedRate = 1000 * 60 * 60 * 24)
     public void cleanUpExpiredTokens() {
         refreshTokenRepository.deleteAllExpiredSinceNow();
         System.out.println("Expired refresh tokens cleaned up at " + new Date());

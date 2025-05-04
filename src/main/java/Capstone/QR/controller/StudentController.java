@@ -8,9 +8,7 @@ import Capstone.QR.dto.Response.StudentAttendanceSummaryResponse;
 import Capstone.QR.model.Attendance;
 import Capstone.QR.model.Klass;
 import Capstone.QR.service.StudentService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
-
 
 
 @RestController
@@ -67,11 +64,6 @@ public class StudentController {
         StudentAttendanceSummaryResponse summary = studentService.getMyAttendanceSummary(classId, userDetails);
         return ResponseEntity.ok(new ApiResponse<>("Attendance summary fetched", summary));
     }
-
-
-
-
-
 
 
     @GetMapping("/pending-join-requests")

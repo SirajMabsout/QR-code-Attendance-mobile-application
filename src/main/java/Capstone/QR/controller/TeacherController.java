@@ -5,12 +5,18 @@ import Capstone.QR.dto.Request.CreateClassRequest;
 import Capstone.QR.dto.Request.GenerateQrRequest;
 import Capstone.QR.dto.Request.UpdateSessionRequest;
 import Capstone.QR.dto.Response.*;
-import Capstone.QR.model.*;
+import Capstone.QR.model.Attendance;
+import Capstone.QR.model.AttendanceRequest;
+import Capstone.QR.model.Klass;
+import Capstone.QR.model.QRCode;
 import Capstone.QR.service.AttendanceExportService;
 import Capstone.QR.service.TeacherService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -47,7 +53,7 @@ public class TeacherController {
             @RequestBody @Valid UpdateSessionRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         teacherService.updateClassSession(request, userDetails);
-        return ResponseEntity.ok(new ApiResponse<>("Session updated successfully",null));
+        return ResponseEntity.ok(new ApiResponse<>("Session updated successfully", null));
     }
 
 

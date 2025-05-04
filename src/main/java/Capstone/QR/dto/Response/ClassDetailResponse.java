@@ -1,6 +1,5 @@
 package Capstone.QR.dto.Response;
 
-import Capstone.QR.model.ClassSession;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 

@@ -3,7 +3,6 @@ package Capstone.QR.controller;
 
 import Capstone.QR.dto.Request.ChatQueryRequest;
 import org.springframework.beans.factory.annotation.Value;
-
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,10 +16,9 @@ import java.util.Map;
 @RequestMapping("/api/chatbot")
 public class ChatbotController {
 
+    private final RestTemplate restTemplate = new RestTemplate();
     @Value("${chatbot.api.url}")
     private String chatbotUrl;
-
-    private final RestTemplate restTemplate = new RestTemplate();
 
     @PostMapping("/ask")
     public ResponseEntity<?> askChatbot(@RequestBody ChatQueryRequest request) {

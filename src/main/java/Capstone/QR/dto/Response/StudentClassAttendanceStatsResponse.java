@@ -1,7 +1,6 @@
 package Capstone.QR.dto.Response;
 
 
-import Capstone.QR.model.AttendanceStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 

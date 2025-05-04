@@ -4,7 +4,9 @@ import Capstone.QR.dto.Request.*;
 import Capstone.QR.dto.Response.ApiResponse;
 import Capstone.QR.dto.Response.LoginResponse;
 import Capstone.QR.model.*;
-import Capstone.QR.repository.*;
+import Capstone.QR.repository.EmailVerificationTokenRepository;
+import Capstone.QR.repository.TeacherRepository;
+import Capstone.QR.repository.UserRepository;
 import Capstone.QR.security.jwt.JwtUtil;
 import Capstone.QR.service.EmailService;
 import Capstone.QR.service.PasswordResetService;
@@ -21,7 +23,6 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -50,22 +51,18 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<String>> register(@RequestBody @Valid RegisterRequest request) throws MessagingException {
-        // 1. If already registered in User table, reject
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiResponse<>("Email already registered", null));
         }
 
-        // 2. Block admin registrations
         if (request.getRole() == Role.ADMIN) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ApiResponse<>("Admin registration is not allowed", null));
         }
 
-        // 3. Generate token
         String token = UUID.randomUUID().toString();
 
-        // 4. Check if there's an existing verification token and update it
         Optional<EmailVerificationToken> existingToken = emailVerificationTokenRepository.findByEmail(request.getEmail());
 
         EmailVerificationToken verification = existingToken.orElse(new EmailVerificationToken());
@@ -79,14 +76,12 @@ public class AuthController {
 
         emailVerificationTokenRepository.save(verification);
 
-        // 5. Send email
         String verificationLink = "https://qr-backend.azurewebsites.net/auth/verify-email?token=" + token;
         String emailBody = emailService.buildVerificationEmail(request.getName(), verificationLink);
         emailService.send(request.getEmail(), "Verify Your Email", emailBody);
 
         return ResponseEntity.ok(new ApiResponse<>("Verification email is sent to your mail box. Verify the account in order to use it", null));
     }
-
 
 
     @GetMapping("/verify-email")
@@ -112,21 +107,17 @@ public class AuthController {
         user.setRole(verification.getRole());
 
         userRepository.save(user);
-        emailVerificationTokenRepository.deleteByToken(token); // ✅ now works
-
+        emailVerificationTokenRepository.deleteByToken(token);
         return ResponseEntity.ok(new ApiResponse<>("Email verified and account created. You may log in now.", null));
     }
-
 
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@RequestBody LoginRequest request, HttpServletResponse response) {
         try {
-            // 1. Check if user exists
             Optional<User> optionalUser = userRepository.findByEmail(request.getEmail());
 
             if (optionalUser.isEmpty()) {
-                // 2. If user is not found, check if email has pending verification
                 boolean hasPendingVerification = emailVerificationTokenRepository
                         .findByEmail(request.getEmail())
                         .isPresent();
@@ -136,19 +127,16 @@ public class AuthController {
                             .body(new ApiResponse<>("Account needs to be verified before logging in.", null));
                 }
 
-                // 3. If no user and no verification token, respond with email not found
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(new ApiResponse<>("Email not registered.", null));
             }
 
             User user = optionalUser.get();
 
-            // 4. Authenticate credentials
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
             );
 
-            // 5. Check teacher approval
             if (user.getRole() == Role.TEACHER) {
                 Teacher teacher = teacherRepository.findById(user.getId())
                         .orElseThrow(() -> new RuntimeException("Teacher profile not found"));
@@ -158,7 +146,6 @@ public class AuthController {
                 }
             }
 
-            // 6. Generate tokens
             String accessToken = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
             String refreshToken = refreshTokenService.createRefreshToken(user);
 
@@ -181,7 +168,6 @@ public class AuthController {
             response.addHeader("Set-Cookie", accessCookie.toString());
             response.addHeader("Set-Cookie", refreshCookie.toString());
 
-            // 7. Return success response
             LoginResponse loginResponse = new LoginResponse("Login was successful", user.getRole().name(), user.getName(), user.getId());
             return ResponseEntity.ok(new ApiResponse<>("Login was successful", loginResponse));
 
@@ -274,7 +260,6 @@ public class AuthController {
         );
         return ResponseEntity.ok(new ApiResponse<>("Password reset successfully", null));
     }
-
 
 
 }

@@ -10,14 +10,12 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
-// === QRCodeRepository ===
 @Repository
 public interface QRCodeRepository extends JpaRepository<QRCode, Long> {
     Optional<QRCode> findByQrCodeData(String qrCodeData);
-    Optional<QRCode> findBySessionId(Long sessionId);
 
+    Optional<QRCode> findBySessionId(Long sessionId);
 
 
     @Transactional

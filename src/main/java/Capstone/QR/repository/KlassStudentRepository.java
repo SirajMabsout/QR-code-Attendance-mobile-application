@@ -33,12 +33,10 @@ public interface KlassStudentRepository extends JpaRepository<KlassStudent, Long
     List<Student> findApprovedStudentsByClassId(@Param("classId") Long classId);
 
 
-        @Transactional
-        @Modifying
-        @Query("DELETE FROM KlassStudent ks WHERE ks.klass.id = :klassId")
-        void deleteByKlassId(@Param("klassId") Long klassId);
-
-
+    @Transactional
+    @Modifying
+    @Query("DELETE FROM KlassStudent ks WHERE ks.klass.id = :klassId")
+    void deleteByKlassId(@Param("klassId") Long klassId);
 
 
 }

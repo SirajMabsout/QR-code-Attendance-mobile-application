@@ -18,5 +18,5 @@ public class Teacher extends User {
     @OneToMany(mappedBy = "teacher")
     private List<Klass> Classes;
     private boolean approved = false;
-    }
+}
 

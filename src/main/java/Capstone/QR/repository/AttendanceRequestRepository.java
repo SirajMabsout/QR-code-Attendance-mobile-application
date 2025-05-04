@@ -10,17 +10,18 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
 public interface AttendanceRequestRepository extends JpaRepository<AttendanceRequest, Long> {
     List<AttendanceRequest> findBySessionIdAndStatus(Long sessionId, RequestStatus status);
-    // In AttendanceRequestRepository.java
+
     Optional<AttendanceRequest> findByStudentIdAndSessionId(Long studentId, Long sessionId);
+
     boolean existsBySession_IdAndStudent_Id(Long sessionId, Long studentId);
 
     @Modifying
     @Query("DELETE FROM AttendanceRequest ar WHERE ar.session.id IN :sessionIds")
     void deleteBySessionIds(@Param("sessionIds") List<Long> sessionIds);
+
     List<AttendanceRequest> findAllByStudentId(Long id);
 }

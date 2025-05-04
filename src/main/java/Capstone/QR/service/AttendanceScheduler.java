@@ -20,7 +20,7 @@ public class AttendanceScheduler {
     private final AttendanceRepository attendanceRepository;
     private final KlassStudentRepository klassStudentRepository;
 
-    @Scheduled(fixedRate = 300_000) // every 5 minutes
+    @Scheduled(fixedRate = 300_000)
     public void markAbsentForExpiredSessions() {
         LocalDateTime now = LocalDateTime.now();
 

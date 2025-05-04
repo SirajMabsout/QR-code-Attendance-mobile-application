@@ -1,5 +1,6 @@
 package Capstone.QR.security.jwt;
 
+import Capstone.QR.service.CustomUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -12,7 +13,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import Capstone.QR.service.CustomUserDetailsService;
 
 import java.io.IOException;
 
@@ -30,7 +30,6 @@ public class JwtFilter extends OncePerRequestFilter {
         String jwt = null;
         String email = null;
 
-// Try to get from cookie
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
                 if ("access_token".equals(cookie.getName())) {
@@ -40,7 +39,6 @@ public class JwtFilter extends OncePerRequestFilter {
             }
         }
 
-// Fallback: Try to get from Authorization header
         if (jwt == null) {
             String authHeader = request.getHeader("Authorization");
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
@@ -48,7 +46,6 @@ public class JwtFilter extends OncePerRequestFilter {
             }
         }
 
-// Extract email from token
         if (jwt != null) {
             email = jwtUtil.extractUsername(jwt);
         }

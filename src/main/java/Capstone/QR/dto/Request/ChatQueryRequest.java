@@ -1,7 +1,6 @@
 package Capstone.QR.dto.Request;
 
 
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

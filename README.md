@@ -1,6 +1,7 @@
 # 📲 QR Attendance System (Spring Boot)
 
-This is a complete backend for a **QR-based Student Attendance System**, built with **Spring Boot**, **JWT Authentication**, and **Swagger API docs**.
+This is a complete backend for a **QR-based Student Attendance System**, built with **Spring Boot**, **JWT
+Authentication**, and **Swagger API docs**.
 
 ---
 

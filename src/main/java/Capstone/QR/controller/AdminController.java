@@ -4,8 +4,6 @@ import Capstone.QR.dto.Response.AdminClassResponse;
 import Capstone.QR.dto.Response.ApiResponse;
 import Capstone.QR.dto.Response.PendingTeacherResponse;
 import Capstone.QR.dto.Response.StudentInClassResponse;
-import Capstone.QR.model.Klass;
-import Capstone.QR.model.Teacher;
 import Capstone.QR.service.AdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

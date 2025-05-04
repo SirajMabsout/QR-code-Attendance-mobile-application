@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Data
@@ -26,5 +25,5 @@ public class AttendanceRequest {
     private LocalDateTime requestedAt;
 
     @Enumerated(EnumType.STRING)
-    private RequestStatus status; // PENDING, APPROVED, REJECTED
+    private RequestStatus status;
 }

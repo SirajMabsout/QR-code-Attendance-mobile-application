@@ -18,6 +18,4 @@ public class DeviceUsage {
     private Long usedMillis;
 
 
-
-
 }

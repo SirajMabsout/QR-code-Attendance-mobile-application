@@ -4,6 +4,7 @@ package Capstone.QR.service;
 import Capstone.QR.dto.Response.*;
 import Capstone.QR.model.*;
 import Capstone.QR.repository.*;
+import Capstone.QR.utils.DistanceCalc;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -16,8 +17,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-import Capstone.QR.utils.DistanceCalc;
 
 @Service
 @RequiredArgsConstructor
@@ -89,30 +88,26 @@ public class StudentService {
             throw new RuntimeException("Student not registered or not approved for this class");
         }
 
-        // Fetch attendance if any exists
         Optional<Attendance> optionalAttendance = attendanceRepository
                 .findAllBySession_IdAndStudent_Id(session.getId(), student.getId())
                 .stream()
-                .filter(a -> a.getStatus() != AttendanceStatus.PENDING) // Already completed
-                .findFirst();
+                .filter(a -> a.getStatus() != AttendanceStatus.PENDING).findFirst();
 
         if (optionalAttendance.isPresent()) {
             throw new RuntimeException("Attendance already marked for this session");
         }
 
-        // Distance calculation
         double distance = DistanceCalc.calculateDistance(qrCode.getLatitude(), qrCode.getLongitude(), studentLat, studentLng);
         double allowedDistance = klass.getAcceptanceRadiusMeters();
 
         List<String> allowedSSIDs = klass.getAllowedWifiSSIDs();
         boolean onAllowedNetwork = allowedSSIDs.contains(networkName);
 
-        // ✅ If within distance
         if (distance <= allowedDistance) {
             Optional<Attendance> attendanceOpt = attendanceRepository
                     .findAllBySession_IdAndStudent_Id(session.getId(), student.getId())
                     .stream()
-                    .filter(a -> a.getStatus() == AttendanceStatus.PENDING || a.getStatus() == AttendanceStatus.ABSENT|| a.getStatus() == AttendanceStatus.EXCUSED)
+                    .filter(a -> a.getStatus() == AttendanceStatus.PENDING || a.getStatus() == AttendanceStatus.ABSENT || a.getStatus() == AttendanceStatus.EXCUSED)
                     .findFirst();
 
             if (attendanceOpt.isPresent()) {
@@ -139,7 +134,6 @@ public class StudentService {
             return "Attendance marked successfully.";
         }
 
-        // ✅ If on allowed WiFi network
         if (onAllowedNetwork) {
             AttendanceRequest existingRequest = attendanceRequestRepository
                     .findByStudentIdAndSessionId(student.getId(), session.getId())
@@ -152,13 +146,14 @@ public class StudentService {
                 existingRequest.setStatus(RequestStatus.PENDING);
                 attendanceRequestRepository.save(existingRequest);
 
-            }else {
+            } else {
                 AttendanceRequest newRequest = new AttendanceRequest();
                 newRequest.setStudent(student);
                 newRequest.setSession(session);
                 newRequest.setRequestedAt(LocalDateTime.now());
                 newRequest.setStatus(RequestStatus.PENDING);
-                attendanceRequestRepository.save(newRequest);}
+                attendanceRequestRepository.save(newRequest);
+            }
 
             Optional<Attendance> attendanceOpt = attendanceRepository
                     .findAllBySession_IdAndStudent_Id(session.getId(), student.getId())
@@ -177,7 +172,6 @@ public class StudentService {
 
         }
 
-        // ❌ Neither near nor on allowed network
         throw new RuntimeException(
                 "You're too far and connected to an unapproved network: " + networkName +
                         ". Approved networks for this class are: " + String.join(", ", allowedSSIDs)
@@ -195,7 +189,6 @@ public class StudentService {
 
         List<Attendance> attendanceList = attendanceRepository.findBySession_Klass_IdAndStudent_Id(classId, student.getId());
 
-        // Map: sessionId → attendance status
         Map<Long, AttendanceStatus> attendanceMap = attendanceList.stream()
                 .collect(Collectors.toMap(
                         a -> a.getSession().getId(),
@@ -219,7 +212,7 @@ public class StudentService {
                 absent++;
                 displayStatus = "ABSENT";
             } else {
-                displayStatus = "NOT_RECORDED"; // Optional: tracks sessions with no attendance yet
+                displayStatus = "NOT_RECORDED";
             }
 
             sessionStatuses.add(new StudentAttendanceSummaryResponse.SessionStatus(
@@ -249,12 +242,6 @@ public class StudentService {
     }
 
 
-
-
-
-
-
-
     public List<PendingJoinRequestResponse> getPendingJoinRequests(UserDetails userDetails) {
         Student student = studentRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Student not found"));
@@ -271,7 +258,6 @@ public class StudentService {
                 ))
                 .toList();
     }
-
 
 
     public ClassDetailResponse getClassDetail(Long classId, UserDetails userDetails) {
@@ -313,6 +299,7 @@ public class StudentService {
 
 
     }
+
     public List<StudentAttendanceRequestResponse> getMyAttendanceRequests(UserDetails userDetails) {
         Student student = studentRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Student not found"));
@@ -350,8 +337,6 @@ public class StudentService {
 
         klassStudentRepository.delete(request);
     }
-
-
 
 
 }

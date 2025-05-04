@@ -24,7 +24,7 @@ public class AttendanceFinalizationService {
     private final AttendanceRepository attendanceRepository;
     private final AttendanceRequestRepository attendanceRequestRepository;
 
-    @Scheduled(fixedRate = 5 * 60 * 1000) // Every 5 minutes
+    @Scheduled(fixedRate = 5 * 60 * 1000)
     @Transactional
     public void updatePendingToAbsentIfNoRequest() {
         LocalDateTime now = LocalDateTime.now();
@@ -40,7 +40,6 @@ public class AttendanceFinalizationService {
         for (ClassSession session : endedSessions) {
             Long sessionId = session.getId();
 
-            // 1. Get all PENDING attendance entries
             List<Attendance> pendingAttendances = attendanceRepository
                     .findBySession_IdAndStatus(sessionId, AttendanceStatus.PENDING);
 

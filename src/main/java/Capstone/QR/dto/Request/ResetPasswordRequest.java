@@ -24,5 +24,4 @@ public class ResetPasswordRequest {
     @Size(min = 8, message = "Password must be at least 8 characters long")
     private String newPassword;
 
-    // Getters and Setters
 }

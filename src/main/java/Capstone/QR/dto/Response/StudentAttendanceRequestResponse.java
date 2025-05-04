@@ -9,7 +9,7 @@ import java.time.LocalTime;
 
 @Data
 @AllArgsConstructor
-public class StudentAttendanceRequestResponse  {
+public class StudentAttendanceRequestResponse {
     private Long requestId;
     private Long classId;
     private String className;

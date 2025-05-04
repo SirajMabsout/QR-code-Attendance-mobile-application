@@ -9,7 +9,7 @@ import java.time.LocalTime;
 @Data
 public class UpdateSessionRequest {
     private Long sessionId;
-    private Boolean canceled;           // true or false
+    private Boolean canceled;
     private LocalDate sessionDate;
     private LocalTime sessionTime;
     private String topic;

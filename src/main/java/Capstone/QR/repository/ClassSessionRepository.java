@@ -13,9 +13,13 @@ import java.util.Optional;
 
 public interface ClassSessionRepository extends JpaRepository<ClassSession, Long> {
     List<ClassSession> findByKlassIdOrderBySessionDateAsc(Long klassId);
+
     List<ClassSession> findByKlassIdAndCanceledFalse(Long klassId);
+
     Optional<ClassSession> findByKlassIdAndSessionDate(Long klassId, LocalDate date);
+
     List<ClassSession> findByKlass_Id(Long classId);
+
     @Query("SELECT s FROM ClassSession s JOIN s.klass.klassStudents ks " +
             "WHERE ks.student.id = :studentId AND ks.approved = true AND s.sessionDate = :date")
     List<ClassSession> findSessionsByStudentIdAndDate(@Param("studentId") Long studentId, @Param("date") LocalDate date);

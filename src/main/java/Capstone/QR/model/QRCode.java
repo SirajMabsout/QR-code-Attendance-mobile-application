@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Data
@@ -20,13 +19,11 @@ public class QRCode {
 
     @OneToOne(optional = false)
     @JoinColumn(name = "session_id")
-    private ClassSession session; // ✅ Link directly to session instead of Klass
-
+    private ClassSession session;
     private LocalDateTime sessionDate;
 
     @Lob
-    private String qrCodeData; // Base64 encoded QR code image
-
+    private String qrCodeData;
     private LocalDateTime expiresAt;
 
     private double latitude;
